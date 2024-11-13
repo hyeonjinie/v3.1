@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="v3_mvp">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.ico"/>
+
+  <title>v3_mvp</title>
+  <link rel="manifest" href="manifest.json">
+
+  <script>
+    // The value below is injected by flutter build, do not touch.
+    const serviceWorkerVersion = null;
+  </script>
+  <!-- This script adds the flutter initialization JS code -->
+  <script src="flutter.js" defer></script>
+
+  <script src="https://ssl.daumcdn.net/dmaps/map_js_init/postcode.v2.js"></script>
+  <script>
+    function execDaumPostcode() {
+      new daum.Postcode({
+        oncomplete: function(data) {
+          var fullAddr = data.address;
+          var extraAddr = '';
+
+          if(data.addressType === 'R'){
+            if(data.bname !== ''){
+              extraAddr += data.bname;
+            }
+            if(data.buildingName !== ''){
+              extraAddr += (extraAddr !== '' ? ', ' + data.buildingName : data.buildingName);
+            }
+            fullAddr += (extraAddr !== '' ? ' ('+ extraAddr +')' : '');
+          }
+
+          // 주소 정보를 Flutter로 전달합니다.
+          window.postMessage(fullAddr, "*");
+        }
+      }).open();
+    }
+  </script>
+</head>
+<body>
+<script>
+  window.addEventListener('load', function(ev) {
+    // Download main.dart.js
+    _flutter.loader.loadEntrypoint({
+      serviceWorker: {
+        serviceWorkerVersion: serviceWorkerVersion,
+      },
+      onEntrypointLoaded: function(engineInitializer) {
+        engineInitializer.initializeEngine().then(function(appRunner) {
+          appRunner.runApp();
+        });
+      }
+    });
+  });
+</script>
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "firebase/app";
+  import { getAnalytics } from "firebase/analytics";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyAG4HD7sJFrOe1NdY2kS2kNr8PsLSE9bWI",
+    authDomain: "v3mvp-b9aa4.firebaseapp.com",
+    databaseURL: "https://v3mvp-b9aa4-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "v3mvp-b9aa4",
+    storageBucket: "v3mvp-b9aa4.appspot.com",
+    messagingSenderId: "712542314773",
+    appId: "1:712542314773:web:079b1b0a357fb91bf7c91c",
+    measurementId: "G-05P3C342ZY"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+</body>
+</html>

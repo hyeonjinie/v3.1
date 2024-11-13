@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Daum 우편번호 서비스 - Embed</title>
+    <script src="http://dmaps.daum.net/map_js_init/postcode.v2.js"></script>
+</head>
+<body>
+<div id="layer" style="display:none;border:5px solid;width:500px;height:300px;margin:5px 0;position:relative;-webkit-overflow-scrolling:touch;"></div>
+<script>
+    function execDaumPostcode() {
+        new daum.Postcode({
+            oncomplete: function(data) {
+                // 데이터를 부모 창으로 전달
+                window.opener.postMessage(data, "*");
+                window.close();
+            }
+        }).embed(document.getElementById('layer'));
+    }
+
+    window.onload = execDaumPostcode;
+</script>
+</body>
+</html>
