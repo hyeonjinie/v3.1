@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:v3_mvp/screens/info_center/bpi_detail/bpi_screen.dart';
+import 'package:v3_mvp/screens/info_center/subscription/sub_info.dart';
 import 'package:v3_mvp/screens/info_center/widget/sd_market_info_list.dart';
 import '../../../services/auth_provider.dart';
 import '../../../widgets/custom_appbar/custom_appbar.dart';
@@ -122,7 +123,7 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
                 indicatorColor: Color(0xFF00AF66),
                 indicatorSize: TabBarIndicatorSize.tab,
                 indicatorPadding: EdgeInsets.symmetric(horizontal: 10),
-                tabs: [
+                tabs: const [
                   Tab(text: '품목정보'),
                   Tab(text: 'BPI'),
                   Tab(text: 'B급'),
@@ -144,7 +145,7 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
                         child: Center(child: Text('못난이 농산물 내용')),
                       ),
                       SingleChildScrollView(
-                        child: Center(child: Text('구독 내용')),
+                        child: SubsInfoPage(),
                       ),
                     ],
                   ),
