@@ -1,4 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:v3_mvp/screens/info_center/subscription/price_mock.dart';
+import 'package:v3_mvp/screens/info_center/subscription/widget/current_chart.dart';
+import 'package:v3_mvp/screens/info_center/subscription/widget/grade_btn.dart';
+import 'package:v3_mvp/screens/info_center/subscription/widget/pred_curr_chart.dart';
+import 'package:v3_mvp/screens/info_center/subscription/widget/price_table.dart';
+import 'package:v3_mvp/screens/info_center/subscription/widget/seasonal_bar.dart';
+import 'package:v3_mvp/screens/info_center/subscription/widget/year_btn.dart';
 import 'package:v3_mvp/widgets/font_size_helper/font_size_helper.dart';
 
 class SubsInfoPage extends StatefulWidget {
@@ -9,98 +16,399 @@ class SubsInfoPage extends StatefulWidget {
 }
 
 class _SubsInfoPageState extends State<SubsInfoPage> {
-  bool isBundleSelected = true;
-  bool isLoading = true;
+  //공통
+  Map<String, dynamic> priceMockupData = priceMockData;
+  String selectedProduct = "들깨";
+  String selectedPriceType = "해외";
+  String priceCategory = "수출가격";
+  bool isContinuousView = false; //그래프 이어서 보기
+  final List<Color> buttonColors = [
+    Color(0xFFEB5C5C),
+    Color(0xFFFF9500),
+    Color(0xFFF8D32D),
+    Color(0xFF9568EE),
+    Color(0xFFEE68C4),
+    Color(0xFF0084FF),
+  ];
+
+  // 분석
+  Map<String, dynamic> cropData = {}; // 선택된 작물 및 옵션의 실제가격 데이터
+  Map<String, List<double>> currentProductionData = {}; //선택한 년도에 대한 분석데이터
+  List<double> seasonalIndex = []; //선택한 년도에 대한 계절데이터
+  Map<String, Color> yearColorMap = {}; //생성된 년도에 따른 컬러 매핑
+  List<String> availableYears = []; // 생성해야 하는 연도 버튼
+  List<String> selectedYears = [];
+  List<String> availableGrades = [];
+  List<String> selectedGrades = [];
+  Map<String, Color> gradeColorMap = {}; //생성된 등급에 따른 컬러 매핑
+
+  // 예측
+  Map<String, dynamic> cropPredData = {};
+  List<double> predCurrProductionData = [];
+  List<double> predProductionData = [];
+  List<String> date = [];
+  List<double> seasonalPredIndex = [];
+  List<String> availablePredYears = [];
+  List<String> selectedPredYears = [];
+  Map<String, Color> yearPredColorMap = {};
+  List<String> availablePredGrades = [];
+  String selectedPredGrades = '해당없음';
 
   @override
   void initState() {
     super.initState();
+    _updateYearColorMap();
+    _updateGradeColorMap();
+    _updateChartData();
   }
 
-  void _toggleSelection() {
-    setState(() {
-      isBundleSelected = !isBundleSelected;
-      if (isBundleSelected) {
+  // chart data 추출
+  void _updateChartData() {
+    // 선택된 작물 및 옵션의 실제가격 데이터 가져오기
+    cropData = priceMockupData['selectedCrops'][selectedProduct]['prices']
+        [selectedPriceType][priceCategory]['실제가격'];
+    cropPredData = priceMockupData['selectedCrops'][selectedProduct]['prices']
+        [selectedPriceType][priceCategory]['예측가격'];
+
+    // 선택된 연도들의 데이터 가져오기
+    currentProductionData = {
+      for (var grade in selectedGrades)
+        grade: [
+          for (var year in selectedYears.reversed)
+            if (year != '평년')
+              ...List<double>.from((cropData[year][grade] ?? [])
+                  .where((data) => data != null)
+                  .map((data) => data!.toDouble()))
+        ]
+    };
+    predProductionData = [
+      for (var year in selectedPredYears.reversed)
+        ...List<double>.from((cropPredData[year][selectedPredGrades] ?? [])
+            .where((data) => data != null)
+            .map((data) => data!.toDouble()))
+    ];
+    predCurrProductionData = [
+      for (var year in selectedPredYears.reversed)
+        if (year != '평년')
+          ...List<double>.from((cropData[year][selectedPredGrades] ?? [])
+              .where((data) => data != null)
+              .map((data) => data!.toDouble()))
+    ];
+    int yearIndex = 0;
+    int month = 1;
+    date.clear();
+
+    for (int i = 0; i < predProductionData.length; i++) {
+      date.add(
+          '${selectedPredYears[yearIndex].substring(2)}.${month.toString().padLeft(2, '0')}');
+      month++;
+      if (month > 12) {
+        month = 1;
+        yearIndex++;
+        if (yearIndex >= selectedPredYears.length) {
+          yearIndex = 0;
+        }
+      }
+    }
+    date.sort((a, b) {
+      int yearA = int.parse(a.split('.')[0]);
+      int monthA = int.parse(a.split('.')[1]);
+      int yearB = int.parse(b.split('.')[0]);
+      int monthB = int.parse(b.split('.')[1]);
+
+      if (yearA == yearB) {
+        return monthA.compareTo(monthB);
       } else {
+        return yearA.compareTo(yearB);
       }
     });
+
+    // 계절지수 설정하기
+    seasonalIndex = [
+      for (var year in selectedYears.reversed)
+        if (year != '평년')
+          ...List<double>.from((cropData['monthly_seasonal_index'][year] ?? [])
+              .where((data) => data != null)
+              .map((data) => data!.toDouble()))
+    ];
+    seasonalPredIndex = [
+      for (var year in selectedPredYears.reversed)
+        ...List<double>.from(
+            (cropPredData['monthly_seasonal_index'][year] ?? [])
+                .where((data) => data != null)
+                .map((data) => data!.toDouble()))
+    ];
+    print(seasonalPredIndex);
+
+    setState(() {});
+  }
+
+  // 연도 버튼 컬러 매핑
+  void _updateYearColorMap() {
+    yearColorMap.clear(); // 기존 맵 초기화
+    availableYears = priceMockupData['selectedCrops'][selectedProduct]['prices']
+            [selectedPriceType][priceCategory]['실제가격']
+        .keys
+        .where((year) =>
+            year != 'act_analysis' &&
+            year != '평년' &&
+            year != 'monthly_seasonal_index')
+        .toList();
+    availableYears.sort((a, b) => int.parse(b).compareTo(int.parse(a)));
+    availableYears.add('평년');
+    selectedYears = [availableYears[0]];
+
+    for (int i = 0; i < availableYears.length; i++) {
+      String year = availableYears[i];
+      if (year == '평년') {
+        yearColorMap[year] = Color(0xFF78B060);
+      } else {
+        yearColorMap[year] = Color(0xFF0084FF);
+      }
+    }
+
+    availablePredYears = priceMockupData['selectedCrops'][selectedProduct]
+            ['prices'][selectedPriceType][priceCategory]['예측가격']
+        .keys
+        .where((year) =>
+            year != 'pred_analysis' && year != 'monthly_seasonal_index')
+        .toList();
+    availablePredYears.sort((a, b) => int.parse(b).compareTo(int.parse(a)));
+    selectedPredYears = [availablePredYears[0]];
+
+    for (int i = 0; i < availablePredYears.length; i++) {
+      String year = availablePredYears[i];
+      if (year == '평년') {
+        yearPredColorMap[year] = Color(0xFF78B060);
+      } else {
+        yearPredColorMap[year] = Color(0xFF0084FF);
+      }
+    }
+  }
+
+  // 등급 버튼 컬러 매핑
+  void _updateGradeColorMap() {
+    gradeColorMap.clear(); // 기존 맵 초기화
+    availableGrades = priceMockupData['selectedCrops'][selectedProduct]
+                ['prices'][selectedPriceType][priceCategory]['실제가격']
+            [availableYears[0]]
+        .keys
+        .toList();
+    selectedGrades = ['해당없음'];
+    for (String grade in availableGrades) {
+      switch (grade) {
+        case '특':
+          gradeColorMap[grade] = Color(0xFFEB5C5C); // 특
+          break;
+        case '상':
+          gradeColorMap[grade] = Color(0xFFFF9500); // 상
+          break;
+        case '중':
+          gradeColorMap[grade] = Color(0xFFF8D32D); // 중
+          break;
+        case '하':
+          gradeColorMap[grade] = Color(0xFF9568EE); // 하
+          break;
+        case '등급외':
+          gradeColorMap[grade] = Color(0xFFEE68C4); // 등급외
+          break;
+        case '해당없음':
+          gradeColorMap[grade] = Color(0xFF0084FF); // 해당없음
+          break;
+        default:
+          gradeColorMap[grade] = Colors.grey; // 지정되지 않은 경우 기본 색상
+      }
+    }
+    print(gradeColorMap);
+    availablePredGrades = priceMockupData['selectedCrops'][selectedProduct]
+                ['prices'][selectedPriceType][priceCategory]['예측가격']
+            [availableYears[0]]
+        .keys
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    double containerSize = screenWidth > 1200 ? (1200 / 2) - 30 : (screenWidth / 2) - 30;
-
     return SingleChildScrollView(
-      child: Container(
-        width: screenWidth > 1200 ? 1200 : screenWidth,
-        padding: EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            Container(
-              color: Color(0xFFF6F6F6),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  children: [
-                    SizedBox(height: 8.0),
-                    Text(
-                      'BPI(B・good Price Index): 농산물을 구입할 때 지불하는 가격의 평균변동을 측정한 수치입니다. (기준: 2020년 평균가격)\n\n'
-                          '메뉴지수: 음식에 사용되는 농산물의 가격의 평균변동을 측정한 수치로 소매가격을 기준으로 구성되어 있습니다.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: getFontSize(context, FontSizeType.small), color: Colors.black),
-                    ),
-                    SizedBox(height: 8.0),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildButton('묶음지수', isBundleSelected, _toggleSelection),
-                        SizedBox(width: 8.0),
-                        _buildButton('메뉴지수', !isBundleSelected, _toggleSelection),
-                        SizedBox(width: 8.0),
-                      ],
-                    ),
-                  ],
+      child: Column(
+        children: [
+          Container(
+            color: Color(0xFFF8F8F8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 30),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 20),
+                  child: Text(
+                    '분석',
+                    style: TextStyle(fontSize: 18),
+                  ),
                 ),
-              ),
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  color: Colors.white,
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PriceTableWidget(
+                        dataRows: cropData['act_analysis'] != null
+                            ? [
+                                ['현재가()', '￦1,100', ' (ton)', '직전대비', '+3%'],
+                                ['전년', '1,050', '▲100(+0.4%)'],
+                                ['평년', '1,050', '▲100(+0.4%)'],
+                                ['1년 평균가', '1,450'],
+                                ['1년 변동가', '1,450'],
+                                ['계절 지수', '1.08'],
+                                ['공급 안정성 지수', '13.25'],
+                              ]
+                            : [
+                                ['현재가()', '', '', '직전대비', ''],
+                                ['전년', '', ''],
+                                ['평년', '', ''],
+                                ['1년 평균가', ''],
+                                ['1년 변동가', ''],
+                                ['계절 지수', ''],
+                                ['공급 안정성 지수', ''],
+                              ],
+                      ),
+                      YearButtonWidget(
+                        availableYears: availableYears,
+                        selectedYears: selectedYears,
+                        onYearsChanged: (updatedSelectedYears) {
+                          setState(() {
+                            selectedYears = updatedSelectedYears;
+                            _updateChartData();
+                          });
+                        },
+                        yearColorMap: yearColorMap,
+                        isContinuousView: false,
+                      ),
+                      YearButtonWidget(
+                        availableYears: availableGrades,
+                        selectedYears: selectedGrades,
+                        onYearsChanged: (updatedSelectedYears) {
+                          setState(() {
+                            selectedGrades = updatedSelectedYears;
+                            _updateChartData();
+                          });
+                        },
+                        yearColorMap: gradeColorMap,
+                        isContinuousView: false,
+                      ),
+                      const SizedBox(height: 16),
+                      CurrentChart(
+                        selectedGrades: selectedGrades,
+                        selectedYears: selectedYears,
+                        currentProductionData: currentProductionData,
+                        onToggleView: (bool newValue) {
+                          setState(() {
+                            isContinuousView = newValue;
+                          });
+                        },
+                        gradeColorMap: gradeColorMap,
+                        unit: cropData['act_analysis'] != null
+                            ? '(${cropData['act_analysis']['currency_unit']})'
+                            : '',
+                        hoverText: 'point.x 가격: point.y',
+                      ),
+                      SeasonalBarWidget(
+                        seasonalIndex: seasonalIndex,
+                        selectedYears: selectedYears,
+                      ),
+                      const SizedBox(
+                        height: 20,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(
+                  height: 20,
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 20),
+                  child: Text(
+                    '예측',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  color: Colors.white,
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PriceTableWidget(
+                        dataRows: cropPredData['pred_analysis'] != null
+                            ? [
+                                ['예측가()', '', '', '직전대비', ''],
+                                ['범위', ' ~ '],
+                                ['범위 이탈 확률', '%'],
+                                ['안정 구간 확률', '%'],
+                                ['일관성 지수', ''],
+                                ['계절 보정가', ''],
+                                ['신호 지수', ''],
+                              ]
+                            : [
+                                ['예측가()', '', '', '직전대비', ''],
+                                ['범위', ''],
+                                ['범위 이탈 확률', ''],
+                                ['안정 구간 확률', ''],
+                                ['일관성 지수', ''],
+                                ['계절 보정가', ''],
+                                ['신호 지수', ''],
+                              ],
+                      ),
+                      YearButtonWidget(
+                        availableYears: availablePredYears,
+                        selectedYears: selectedPredYears,
+                        onYearsChanged: (updatedSelectedYears) {
+                          setState(() {
+                            selectedPredYears = updatedSelectedYears;
+                            _updateChartData();
+                          });
+                        },
+                        yearColorMap: yearPredColorMap,
+                        isContinuousView: false,
+                      ),
+                      GradeButtonWidget(
+                        onGradeChanged: (newSelectedForecast) {
+                          setState(() {
+                            selectedPredGrades = newSelectedForecast;
+                            _updateChartData();
+                          });
+                        },
+                        btnNames: availablePredGrades,
+                        selectedBtn: selectedPredGrades,
+                      ),
+                      TrendChart(
+                        latestPred: predProductionData,
+                        latestActual: predCurrProductionData,
+                        date: date,
+                        actualName: '현재가격',
+                        predictedName: '예측가격',
+                        unit: '',
+                      ),
+                      SeasonalBarWidget(
+                        seasonalIndex: seasonalPredIndex,
+                        selectedYears: selectedPredYears,
+                      ),
+                      const SizedBox(
+                        height: 20,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(
+                  height: 50,
+                ),
+              ],
             ),
-            isLoading
-                ? SizedBox(
-                height: 300,
-                child: Center(child: CircularProgressIndicator()))
-                : Container(),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
-
-  Widget _buildButton(String text, bool isSelected, VoidCallback onPressed) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onPressed,
-        child: Container(
-          decoration: BoxDecoration(
-            color: isSelected ? Color(0xFF11C278) : Colors.white,
-            borderRadius: BorderRadius.circular(20.0),
-            border: Border.all(
-              color: isSelected ? Color(0xFF11C278) : Color(0xFFE6E6E6),
-            ),
-          ),
-          padding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
-          child: Center(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.black,
-                fontSize: 16.0,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
 }
