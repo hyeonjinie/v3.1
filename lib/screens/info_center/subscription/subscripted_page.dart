@@ -71,35 +71,9 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
         ),
         // 정보 영역 (스크롤 가능)
         Expanded(
-          child: SingleChildScrollView(
-            child: isPriceSelected ? SubsInfoPage() : SubIndexInfo(),
-          ),
+          child: isPriceSelected ? SubsInfoPage() : SubIndexInfo(),
         ),
       ],
-    );
-  }
-
-  // 가격 정보 표시 위젯
-  Widget _buildPriceInfo() {
-    return Container(
-      color: Colors.white,
-      alignment: Alignment.center,
-      child: const Text(
-        '가격 정보 표시',
-        style: TextStyle(fontSize: 18, color: Colors.black),
-      ),
-    );
-  }
-
-  // 지수 정보 표시 위젯
-  Widget _buildIndexInfo() {
-    return Container(
-      color: Colors.white,
-      alignment: Alignment.center,
-      child: const Text(
-        '지수 정보 표시',
-        style: TextStyle(fontSize: 18, color: Colors.black),
-      ),
     );
   }
 

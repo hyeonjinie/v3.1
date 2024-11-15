@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -127,8 +128,8 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
                       children: [
                         SingleChildScrollView(child: MarketInfoList()),
                         SingleChildScrollView(child: BpiScreen()),
-                        Center(child: Text('못난이 농산물 내용')),
-                        Expanded(child: SubscriptedPage()),
+                        SingleChildScrollView(child: Container(child: Text('못난이 농산물 내용'))),
+                        SubscriptedPage(),
                       ],
                     ),
                   ),
