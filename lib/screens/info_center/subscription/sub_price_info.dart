@@ -22,14 +22,6 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
   String selectedPriceType = "해외";
   String priceCategory = "수출가격";
   bool isContinuousView = false; //그래프 이어서 보기
-  final List<Color> buttonColors = [
-    Color(0xFFEB5C5C),
-    Color(0xFFFF9500),
-    Color(0xFFF8D32D),
-    Color(0xFF9568EE),
-    Color(0xFFEE68C4),
-    Color(0xFF0084FF),
-  ];
 
   // 분석
   Map<String, dynamic> cropData = {}; // 선택된 작물 및 옵션의 실제가격 데이터
@@ -95,7 +87,6 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
       ];
     }
 
-    print(currentProductionData);
     predProductionData = [
       for (var year in selectedPredYears..sort())
         ...List<double>.from((cropPredData[year][selectedPredGrades] ?? [])
@@ -242,185 +233,183 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            color: Color(0xFFF8F8F8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 30),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 20),
-                  child: Text(
-                    '분석',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  color: Colors.white,
-                  width: double.infinity,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      PriceTableWidget(
-                        dataRows: cropData['act_analysis'] != null
-                            ? [
-                                ['현재가()', '￦1,100', ' (ton)', '직전대비', '+3%'],
-                                ['전년', '1,050', '▲100(+0.4%)'],
-                                ['평년', '1,050', '▲100(+0.4%)'],
-                                ['1년 평균가', '1,450'],
-                                ['1년 변동가', '1,450'],
-                                ['계절 지수', '1.08'],
-                                ['공급 안정성 지수', '13.25'],
-                              ]
-                            : [
-                                ['현재가()', '', '', '직전대비', ''],
-                                ['전년', '', ''],
-                                ['평년', '', ''],
-                                ['1년 평균가', ''],
-                                ['1년 변동가', ''],
-                                ['계절 지수', ''],
-                                ['공급 안정성 지수', ''],
-                              ],
-                      ),
-                      YearButtonWidget(
-                        availableYears: availableYears,
-                        selectedYears: selectedYears,
-                        onYearsChanged: (updatedSelectedYears) {
-                          setState(() {
-                            selectedYears = updatedSelectedYears;
-                            _updateChartData();
-                          });
-                        },
-                        yearColorMap: yearColorMap,
-                        isContinuousView: false,
-                      ),
-                      YearButtonWidget(
-                        availableYears: availableGrades,
-                        selectedYears: selectedGrades,
-                        onYearsChanged: (updatedSelectedYears) {
-                          setState(() {
-                            selectedGrades = updatedSelectedYears;
-                            _updateChartData();
-                          });
-                        },
-                        yearColorMap: gradeColorMap,
-                        isContinuousView: false,
-                      ),
-                      const SizedBox(height: 16),
-                      CurrentChart(
-                        selectedGrades: selectedGrades,
-                        selectedYears: selectedYears,
-                        currentProductionData: currentProductionData,
-                        onToggleView: (bool newValue) {
-                          setState(() {
-                            isContinuousView = newValue;
-                          });
-                        },
-                        gradeColorMap: gradeColorMap,
-                        unit: cropData['act_analysis'] != null
-                            ? '(${cropData['act_analysis']['currency_unit']})'
-                            : '',
-                        hoverText: 'point.x: point.y',
-                      ),
-                      SeasonalBarWidget(
-                        seasonalIndex: seasonalIndex,
-                        selectedYears: selectedYears,
-                      ),
-                      const SizedBox(
-                        height: 20,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(
-                  height: 20,
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 20),
-                  child: Text(
-                    '예측',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  color: Colors.white,
-                  width: double.infinity,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      PriceTableWidget(
-                        dataRows: cropPredData['pred_analysis'] != null
-                            ? [
-                                ['예측가()', '', '', '직전대비', ''],
-                                ['범위', ' ~ '],
-                                ['범위 이탈 확률', '%'],
-                                ['안정 구간 확률', '%'],
-                                ['일관성 지수', ''],
-                                ['계절 보정가', ''],
-                                ['신호 지수', ''],
-                              ]
-                            : [
-                                ['예측가()', '', '', '직전대비', ''],
-                                ['범위', ''],
-                                ['범위 이탈 확률', ''],
-                                ['안정 구간 확률', ''],
-                                ['일관성 지수', ''],
-                                ['계절 보정가', ''],
-                                ['신호 지수', ''],
-                              ],
-                      ),
-                      YearButtonWidget(
-                        availableYears: availablePredYears,
-                        selectedYears: selectedPredYears,
-                        onYearsChanged: (updatedSelectedYears) {
-                          setState(() {
-                            selectedPredYears = updatedSelectedYears;
-                            _updateChartData();
-                          });
-                        },
-                        yearColorMap: yearPredColorMap,
-                        isContinuousView: false,
-                      ),
-                      GradeButtonWidget(
-                        onGradeChanged: (newSelectedForecast) {
-                          setState(() {
-                            selectedPredGrades = newSelectedForecast;
-                            _updateChartData();
-                          });
-                        },
-                        btnNames: availablePredGrades,
-                        selectedBtn: selectedPredGrades,
-                      ),
-                      TrendChart(
-                        latestPred: predProductionData,
-                        latestActual: predCurrProductionData,
-                        date: date,
-                        actualName: '현재가격',
-                        predictedName: '예측가격',
-                        unit: '',
-                      ),
-                      SeasonalBarWidget(
-                        seasonalIndex: seasonalPredIndex,
-                        selectedYears: selectedPredYears,
-                      ),
-                      const SizedBox(
-                        height: 20,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(
-                  height: 50,
-                ),
-              ],
+    return Container(
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 20),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                '분석',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
             ),
-          ),
-        ],
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              color: Colors.white,
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  PriceTableWidget(
+                    dataRows: cropData['act_analysis'] != null
+                        ? [
+                            ['현재가()', '￦1,100', ' (ton)', '직전대비', '+3%'],
+                            ['전년', '1,050', '▲100(+0.4%)'],
+                            ['평년', '1,050', '▲100(+0.4%)'],
+                            ['1년 평균가', '1,450'],
+                            ['1년 변동가', '1,450'],
+                            ['계절 지수', '1.08'],
+                            ['공급 안정성 지수', '13.25'],
+                          ]
+                        : [
+                            ['현재가()', '', '', '직전대비', ''],
+                            ['전년', '', ''],
+                            ['평년', '', ''],
+                            ['1년 평균가', ''],
+                            ['1년 변동가', ''],
+                            ['계절 지수', ''],
+                            ['공급 안정성 지수', ''],
+                          ],
+                  ),
+                  YearButtonWidget(
+                    availableYears: availableYears,
+                    selectedYears: selectedYears,
+                    onYearsChanged: (updatedSelectedYears) {
+                      setState(() {
+                        selectedYears = updatedSelectedYears;
+                        _updateChartData();
+                      });
+                    },
+                    yearColorMap: yearColorMap,
+                    isContinuousView: false,
+                  ),
+                  YearButtonWidget(
+                    availableYears: availableGrades,
+                    selectedYears: selectedGrades,
+                    onYearsChanged: (updatedSelectedYears) {
+                      setState(() {
+                        selectedGrades = updatedSelectedYears;
+                        _updateChartData();
+                      });
+                    },
+                    yearColorMap: gradeColorMap,
+                    isContinuousView: false,
+                  ),
+                  const SizedBox(height: 16),
+                  CurrentChart(
+                    selectedGrades: selectedGrades,
+                    selectedYears: selectedYears,
+                    currentProductionData: currentProductionData,
+                    onToggleView: (bool newValue) {
+                      setState(() {
+                        isContinuousView = newValue;
+                      });
+                    },
+                    gradeColorMap: gradeColorMap,
+                    unit: cropData['act_analysis'] != null
+                        ? '(${cropData['act_analysis']['currency_unit']})'
+                        : '',
+                    hoverText: 'point.x: point.y',
+                  ),
+                  SeasonalBarWidget(
+                    seasonalIndex: seasonalIndex,
+                    selectedYears: selectedYears,
+                  ),
+                  const SizedBox(
+                    height: 20,
+                  ),
+                ],
+              ),
+            ),
+            Divider(),
+            const SizedBox(height: 20),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                '예측',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              color: Colors.white,
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  PriceTableWidget(
+                    dataRows: cropPredData['pred_analysis'] != null
+                        ? [
+                            ['예측가()', '', '', '직전대비', ''],
+                            ['범위', ' ~ '],
+                            ['범위 이탈 확률', '%'],
+                            ['안정 구간 확률', '%'],
+                            ['일관성 지수', ''],
+                            ['계절 보정가', ''],
+                            ['신호 지수', ''],
+                          ]
+                        : [
+                            ['예측가()', '', '', '직전대비', ''],
+                            ['범위', ''],
+                            ['범위 이탈 확률', ''],
+                            ['안정 구간 확률', ''],
+                            ['일관성 지수', ''],
+                            ['계절 보정가', ''],
+                            ['신호 지수', ''],
+                          ],
+                  ),
+                  YearButtonWidget(
+                    availableYears: availablePredYears,
+                    selectedYears: selectedPredYears,
+                    onYearsChanged: (updatedSelectedYears) {
+                      setState(() {
+                        selectedPredYears = updatedSelectedYears;
+                        _updateChartData();
+                      });
+                    },
+                    yearColorMap: yearPredColorMap,
+                    isContinuousView: false,
+                  ),
+                  GradeButtonWidget(
+                    onGradeChanged: (newSelectedForecast) {
+                      setState(() {
+                        selectedPredGrades = newSelectedForecast;
+                        _updateChartData();
+                      });
+                    },
+                    btnNames: availablePredGrades,
+                    selectedBtn: selectedPredGrades,
+                  ),
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  TrendChart(
+                    latestPred: predProductionData,
+                    latestActual: predCurrProductionData,
+                    date: date,
+                    actualName: '현재가격',
+                    predictedName: '예측가격',
+                    unit: '',
+                  ),
+                  SeasonalBarWidget(
+                    seasonalIndex: seasonalPredIndex,
+                    selectedYears: selectedPredYears,
+                  ),
+                  const SizedBox(
+                    height: 20,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(
+              height: 50,
+            ),
+          ],
+        ),
       ),
     );
   }

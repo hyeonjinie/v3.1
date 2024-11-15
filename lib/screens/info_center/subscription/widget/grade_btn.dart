@@ -35,7 +35,7 @@ class _GradeButtonWidgetState extends State<GradeButtonWidget> {
           final isSelected = selectedBtn == grade;
 
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 5.0),
+            padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 5.0),
             child: ElevatedButton(
               onPressed: () {
                 setState(() {
@@ -44,7 +44,7 @@ class _GradeButtonWidgetState extends State<GradeButtonWidget> {
                 widget.onGradeChanged(grade); 
               },
               style: ElevatedButton.styleFrom(
-                minimumSize: Size(60, 35),
+                minimumSize: Size(70, 35),
                 padding: EdgeInsets.zero,
                 backgroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
