@@ -44,7 +44,7 @@ class PriceTableWidget extends StatelessWidget {
               Spacer(),
               Text(
                 titleData[1],
-                style: TextStyle(fontSize: 25),
+                style: TextStyle(fontSize: 25, fontWeight: FontWeight.w600),
               ),
               Text(
                 titleData[2],
@@ -74,13 +74,27 @@ class PriceTableWidget extends StatelessWidget {
 
   // 데이터를 2행 3열의 그리드로 보여주는 함수
   Widget _buildDataGrid(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      children: [
-        for (int i = 1; i < dataRows.length; i++)
-          _buildDataCell(context, dataRows[i][0], dataRows[i][1],
-              dataRows[i].length > 2 ? dataRows[i][2] : '')
-      ],
+    final screenWidth = MediaQuery.of(context).size.width;
+    return Container(
+      width: screenWidth > 1200 ? 1200 : screenWidth,
+      height: 200, 
+      child: GridView.builder(
+        physics: NeverScrollableScrollPhysics(), 
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3, 
+          childAspectRatio:
+              (screenWidth > 1200 ? 1200 : screenWidth) / 3 / 100, 
+        ),
+        itemCount: dataRows.length - 1, 
+        itemBuilder: (context, index) {
+          return _buildDataCell(
+            context,
+            dataRows[index + 1][0],
+            dataRows[index + 1][1],
+            dataRows[index + 1].length > 2 ? dataRows[index + 1][2] : '',
+          );
+        },
+      ),
     );
   }
 
@@ -131,16 +145,16 @@ class PriceTableWidget extends StatelessWidget {
               child: Text(
                 value,
                 style: value.length > 10
-                    ? TextStyle(fontSize: 16)
-                    : TextStyle(fontSize: 18),
+                    ? TextStyle(fontSize: 16, fontWeight: FontWeight.w500)
+                    : TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
                 textAlign: TextAlign.center,
               ),
             )
           else
             Text(value,
                 style: value.length > 10
-                    ? TextStyle(fontSize: 16)
-                    : TextStyle(fontSize: 16)),
+                    ? TextStyle(fontSize: 16, fontWeight: FontWeight.w500)
+                    : TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
           if (additionalValue != null && additionalValue.isNotEmpty) ...[
             const SizedBox(height: 1), // 줄 간격을 줄이기 위해 크기 조정
             Text(
@@ -148,7 +162,7 @@ class PriceTableWidget extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'Pretendard',
                 fontWeight: FontWeight.w400,
-                fontSize: 10,
+                fontSize: 12,
                 color: additionalValue.startsWith('▲')
                     ? const Color(0xFFEB5C5C)
                     : additionalValue.startsWith('▼')

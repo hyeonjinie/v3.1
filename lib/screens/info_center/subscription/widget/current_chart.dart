@@ -1,28 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
+// _ChartData 클래스 정의 추가
+class _ChartData {
+  final String x;
+  final double y;
+
+  _ChartData(this.x, this.y);
+}
+
 class CurrentChart extends StatefulWidget {
+  final Map<String, List<double>> currentProductionData;
+  final Map<String, Color> gradeColorMap;
   final List<String> selectedGrades;
   final List<String> selectedYears;
-  final Map<String, List<double>> currentProductionData;
   final ValueChanged<bool> onToggleView;
-  final Map<String, Color> gradeColorMap;
   final String unit;
   final String hoverText;
 
   const CurrentChart({
-    Key? key,
+    Key? key, 
+    required this.currentProductionData,
+    required this.gradeColorMap,
     required this.selectedGrades,
     required this.selectedYears,
-    required this.currentProductionData,
     required this.onToggleView,
-    required this.gradeColorMap,
     required this.unit,
     required this.hoverText,
   }) : super(key: key);
 
   @override
-  _CurrentChartState createState() => _CurrentChartState();
+  State<CurrentChart> createState() => _CurrentChartState();
 }
 
 class _CurrentChartState extends State<CurrentChart> {
@@ -31,7 +39,6 @@ class _CurrentChartState extends State<CurrentChart> {
     return _buildChart();
   }
 
-  // 그래프 그리기
   Widget _buildChart() {
     final TooltipBehavior tooltipBehavior = TooltipBehavior(
       enable: true,
@@ -40,53 +47,94 @@ class _CurrentChartState extends State<CurrentChart> {
 
     final TrackballBehavior trackballBehavior = TrackballBehavior(
       enable: true,
-      activationMode: ActivationMode.singleTap, // 터치할 때 트랙볼 활성화
-      tooltipSettings: InteractiveTooltip(
+      activationMode: ActivationMode.singleTap,
+      tooltipSettings: const InteractiveTooltip(
         enable: true,
-        format: widget.hoverText,
       ),
-      lineType: TrackballLineType.vertical, // 수평으로 호버 이펙트 표시
-      markerSettings: TrackballMarkerSettings(
-          markerVisibility: TrackballVisibilityMode.visible),
+      lineType: TrackballLineType.vertical,
+      markerSettings: const TrackballMarkerSettings(
+        markerVisibility: TrackballVisibilityMode.visible,
+      ),
     );
 
+    // xLabels 생성: 선택된 연도와 평년을 포함한 통합 타임라인 생성
     List<String> xLabels = [];
     List<String> years =
         List.from(widget.selectedYears.where((year) => year != '평년'))..sort();
 
-    int month = 1;
     for (var year in years) {
-      while (month <= 12 && xLabels.length < widget.currentProductionData.values.first.length) {
+      for (int month = 1; month <= 12; month++) {
         xLabels.add(
-            '$year.${month.toString().padLeft(2, '0')}'); // 'YYYY.MM' 형식으로 추가
-        month++;
+            '${year.substring(2)}.${month.toString().padLeft(2, '0')}'); // 'YY.MM'
       }
-      month = 1; 
     }
 
-    return Container(
-      child: SfCartesianChart(
-        primaryXAxis: CategoryAxis(
-          labelRotation: 0,
-          interval: null,
-          desiredIntervals: null, // 연속 그래프일 때 레이블 간격 설정
-          edgeLabelPlacement: EdgeLabelPlacement.shift,
+    // x축 레이블에 중복 제거
+    xLabels = xLabels.toSet().toList();
+
+    return SfCartesianChart(
+      primaryXAxis: const CategoryAxis(
+        majorGridLines: MajorGridLines(width: 0),
+        labelRotation: 0,
+        interval: 1,
+        labelStyle: TextStyle(
+          color: Color(0xFF666C77),
+          fontSize: 12,
         ),
-        tooltipBehavior: tooltipBehavior,
-        trackballBehavior: trackballBehavior,
-        series: widget.selectedGrades.map((grade) {
+      ),
+      primaryYAxis: const NumericAxis(
+        majorGridLines: MajorGridLines(
+          width: 0.5,
+          color: Color(0xFFEEEEEE),
+        ),
+        labelStyle: TextStyle(
+          color: Color(0xFF666C77),
+          fontSize: 12,
+        ),
+      ),
+      tooltipBehavior: tooltipBehavior,
+      trackballBehavior: trackballBehavior,
+      series: [
+        // 선택된 등급 데이터 추가
+        ...widget.selectedGrades.map((grade) {
           List<double> filteredData = widget.currentProductionData[grade] ?? [];
-          return LineSeries<double, String>(
+          return LineSeries<_ChartData, String>(
             name: grade,
-            dataSource: filteredData,
-            xValueMapper: (double data, int index) => xLabels[index],
-            yValueMapper: (double data, _) => data,
-            // markerSettings: MarkerSettings(isVisible: true),
+            dataSource: List.generate(
+              filteredData.length,
+              (index) => _ChartData(xLabels[index], filteredData[index]),
+            ),
+            xValueMapper: (_ChartData data, _) => data.x,
+            yValueMapper: (_ChartData data, _) => data.y,
             color: widget.gradeColorMap[grade],
             animationDuration: 0,
+            markerSettings: const MarkerSettings(
+              isVisible: true,
+              width: 4, // TrendChart와 동일한 크기
+              height: 4, // TrendChart와 동일한 크기
+            ),
           );
-        }).toList(),
-      ),
+        }),
+        // 평년 데이터 추가
+        if (widget.currentProductionData.containsKey('평년'))
+          LineSeries<_ChartData, String>(
+            name: '평년',
+            dataSource: List.generate(
+              widget.currentProductionData['평년']!.length,
+              (index) => _ChartData(
+                  xLabels[index], widget.currentProductionData['평년']![index]),
+            ),
+            xValueMapper: (_ChartData data, _) => data.x,
+            yValueMapper: (_ChartData data, _) => data.y,
+            color: const Color(0xFFB8D9AA), // 평년 데이터 색상
+            animationDuration: 0,
+            markerSettings: const MarkerSettings(
+              isVisible: true,
+              width: 4, // TrendChart와 동일한 크기
+              height: 4, // TrendChart와 동일한 크기
+            ),
+          ),
+      ],
     );
   }
 }

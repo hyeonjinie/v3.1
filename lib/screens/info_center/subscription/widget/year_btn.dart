@@ -34,44 +34,45 @@ class _YearButtonWidgetState extends State<YearButtonWidget> {
           }
 
           final isSelected = widget.selectedYears.contains(year);
-          final yearColor = widget.yearColorMap[year] ?? const Color(0xFFE1E1E1);
-          btnWidth = year.length < 2 ? 50 : 60;
+          final yearColor =
+              widget.yearColorMap[year] ?? const Color(0xFFE1E1E1);
+          btnWidth = year.length < 2 ? 50 : 70;
 
           return Padding(
-            padding: EdgeInsets.symmetric(horizontal: year.length < 2 ? 3.0 : 5.0),
+            padding:
+                EdgeInsets.symmetric(horizontal: year.length < 2 ? 3.0 : 5.0, vertical: 5.0),
             child: ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  if (isSelected) {
-                    widget.selectedYears.remove(year);
-                  } else {
-                    widget.selectedYears.add(year);
-                  }
-                  widget.onYearsChanged(widget.selectedYears);
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                minimumSize: Size(btnWidth, 35),
-                padding: EdgeInsets.zero,
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(50),
-                  side: BorderSide(
-                    color: isSelected ? yearColor : const Color(0xFFE1E1E1),
-                    width: isSelected ? 2.0 : 1.0,
+                onPressed: () {
+                  setState(() {
+                    if (isSelected) {
+                      widget.selectedYears.remove(year);
+                    } else {
+                      widget.selectedYears.add(year);
+                    }
+                    widget.onYearsChanged(widget.selectedYears);
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(btnWidth, 35),
+                  padding: EdgeInsets.zero,
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                    side: BorderSide(
+                      color: isSelected ? yearColor : const Color(0xFFE1E1E1),
+                      width: isSelected ? 2.0 : 1.0,
+                    ),
                   ),
                 ),
-              ),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  year,
-                  style: TextStyle(
-                    color: isSelected ? yearColor : const Color(0xFF9CA1AB),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    year,
+                    style: TextStyle(
+                      color: isSelected ? yearColor : const Color(0xFF9CA1AB),
+                    ),
                   ),
-                ),
-              ),
-            ),
+                )),
           );
         }).toList(),
       ),
