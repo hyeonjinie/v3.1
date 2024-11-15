@@ -5,6 +5,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:v3_mvp/screens/info_center/bpi_detail/bpi_screen.dart';
 import 'package:v3_mvp/screens/info_center/subscription/sub_price_info.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted_page.dart';
 import 'package:v3_mvp/screens/info_center/widget/sd_market_info_list.dart';
 import '../../../services/auth_provider.dart';
 import '../../../widgets/custom_appbar/custom_appbar.dart';
@@ -40,6 +41,124 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
       _selectedIndex = index;
     });
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (kIsWeb && constraints.maxWidth > 660) {
+          return Scaffold(
+            key: _scaffoldKey,
+            appBar: CustomAppBar(
+              scaffoldKey: _scaffoldKey,
+              selectedIndex: _selectedIndex,
+              onItemTapped: (index) =>
+                  NavigationHelper.onItemTapped(context, index, _updateIndex),
+            ),
+            body: SingleChildScrollView(
+              // Scaffold 전체에 스크롤 추가
+              child: _buildBody(),
+            ),
+          );
+        } else {
+          return Scaffold(
+            key: _scaffoldKey,
+            appBar: CustomAppBar(
+              scaffoldKey: _scaffoldKey,
+              selectedIndex: _selectedIndex,
+              onItemTapped: (index) =>
+                  NavigationHelper.onItemTapped(context, index, _updateIndex),
+            ),
+            body: SingleChildScrollView(
+              child: _buildBody(),
+            ),
+            bottomNavigationBar: CustomBottomNavigationBar(
+              selectedIndex: _selectedIndex,
+              onItemTapped: (index) =>
+                  NavigationHelper.onItemTapped(context, index, _updateIndex),
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildBody() {
+    final authProvider = Provider.of<AuthProviderService>(context);
+    final user = authProvider.user;
+    double screenWidth = MediaQuery.of(context).size.width;
+    double horizontalInset = screenWidth * 0.1;
+    if (horizontalInset < 20) horizontalInset = 20;
+    if (horizontalInset > 300) horizontalInset = 300;
+
+    return DefaultTabController(
+      length: 4,
+      child: Center(
+        child: SizedBox(
+          width: screenWidth > 1200 ? 1200 : screenWidth,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: Column(
+              children: <Widget>[
+                TabBar(
+                  controller: _tabController,
+                  labelColor: Colors.black,
+                  unselectedLabelColor: Colors.grey[700],
+                  labelStyle: TextStyle(
+                      fontSize: getFontSize(context, FontSizeType.medium),
+                      fontWeight: FontWeight.bold),
+                  unselectedLabelStyle: TextStyle(
+                      fontSize: getFontSize(context, FontSizeType.medium)),
+                  indicatorColor: Color(0xFF00AF66),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicatorPadding: EdgeInsets.symmetric(horizontal: 10),
+                  tabs: const [
+                    Tab(text: '품목정보'),
+                    Tab(text: 'BPI'),
+                    Tab(text: 'B급'),
+                    Tab(text: '구독'),
+                  ],
+                ),
+                if (user != null)
+                  Container(
+                    height: 2000,
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        SingleChildScrollView(child: MarketInfoList()),
+                        SingleChildScrollView(child: BpiScreen()),
+                        Center(child: Text('못난이 농산물 내용')),
+                        Expanded(child: SubscriptedPage()),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildStockCard(Map<String, dynamic> stock) {
+    return Card(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Text(stock['name'],
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
+          Text("Current: ${stock['currentValue']}",
+              style: TextStyle(fontSize: 18)),
+          Text("Change: ${stock['change']} (${stock['changePercent']})",
+              style: TextStyle(fontSize: 16, color: Colors.green)),
+        ],
+      ),
+    );
+  }
+}
+
+
 
   // @override
   // Widget build(BuildContext context) {
@@ -164,119 +283,3 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
   //     ),
   //   );
   // }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (kIsWeb && constraints.maxWidth > 660) {
-          return Scaffold(
-            key: _scaffoldKey,
-            appBar: CustomAppBar(
-              scaffoldKey: _scaffoldKey,
-              selectedIndex: _selectedIndex,
-              onItemTapped: (index) =>
-                  NavigationHelper.onItemTapped(context, index, _updateIndex),
-            ),
-            body: SingleChildScrollView(
-              // Scaffold 전체에 스크롤 추가
-              child: _buildBody(),
-            ),
-          );
-        } else {
-          return Scaffold(
-            key: _scaffoldKey,
-            appBar: CustomAppBar(
-              scaffoldKey: _scaffoldKey,
-              selectedIndex: _selectedIndex,
-              onItemTapped: (index) =>
-                  NavigationHelper.onItemTapped(context, index, _updateIndex),
-            ),
-            body: SingleChildScrollView(
-              child: _buildBody(),
-            ),
-            bottomNavigationBar: CustomBottomNavigationBar(
-              selectedIndex: _selectedIndex,
-              onItemTapped: (index) =>
-                  NavigationHelper.onItemTapped(context, index, _updateIndex),
-            ),
-          );
-        }
-      },
-    );
-  }
-
-  Widget _buildBody() {
-    final authProvider = Provider.of<AuthProviderService>(context);
-    final user = authProvider.user;
-    double screenWidth = MediaQuery.of(context).size.width;
-    double horizontalInset = screenWidth * 0.1;
-    if (horizontalInset < 20) horizontalInset = 20;
-    if (horizontalInset > 300) horizontalInset = 300;
-
-    return DefaultTabController(
-      length: 4,
-      child: Center(
-        child: SizedBox(
-          width: screenWidth > 1200 ? 1200 : screenWidth,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1200),
-            child: Column(
-              children: <Widget>[
-                TabBar(
-                  controller: _tabController,
-                  labelColor: Colors.black,
-                  unselectedLabelColor: Colors.grey[700],
-                  labelStyle: TextStyle(
-                      fontSize: getFontSize(context, FontSizeType.medium),
-                      fontWeight: FontWeight.bold),
-                  unselectedLabelStyle: TextStyle(
-                      fontSize: getFontSize(context, FontSizeType.medium)),
-                  indicatorColor: Color(0xFF00AF66),
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicatorPadding: EdgeInsets.symmetric(horizontal: 10),
-                  tabs: const [
-                    Tab(text: '품목정보'),
-                    Tab(text: 'BPI'),
-                    Tab(text: 'B급'),
-                    Tab(text: '구독'),
-                  ],
-                ),
-                if (user != null)
-                  Container(
-                    height: 2000,
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        SingleChildScrollView(child: MarketInfoList()),
-                        SingleChildScrollView(child: BpiScreen()),
-                        Center(child: Text('못난이 농산물 내용')),
-                        SingleChildScrollView(child: SubsInfoPage()),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget buildStockCard(Map<String, dynamic> stock) {
-    return Card(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Text(stock['name'],
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
-          Text("Current: ${stock['currentValue']}",
-              style: TextStyle(fontSize: 18)),
-          Text("Change: ${stock['change']} (${stock['changePercent']})",
-              style: TextStyle(fontSize: 16, color: Colors.green)),
-        ],
-      ),
-    );
-  }
-}
