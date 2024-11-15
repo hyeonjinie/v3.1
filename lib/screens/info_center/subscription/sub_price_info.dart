@@ -74,21 +74,36 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
     currentProductionData = {
       for (var grade in selectedGrades)
         grade: [
-          for (var year in selectedYears.reversed)
+          for (var year in (selectedYears..sort()))
             if (year != '평년')
               ...List<double>.from((cropData[year][grade] ?? [])
                   .where((data) => data != null)
                   .map((data) => data!.toDouble()))
         ]
     };
+
+    // 평년 데이터 처리
+    if (selectedYears.contains('평년')) {
+      currentProductionData['평년'] = [
+        for (var year in selectedYears.where((y) => y != '평년').toList()..sort())
+          if (cropData['평년'].containsKey(year))
+            ...List<double>.from((cropData['평년'][year] ?? [])
+                .where((data) => data != null)
+                .map((data) => data!.toDouble()))
+          else
+            ...List<double>.filled(12, 0.0) // 빈 값으로 채우기
+      ];
+    }
+
+    print(currentProductionData);
     predProductionData = [
-      for (var year in selectedPredYears.reversed)
+      for (var year in selectedPredYears..sort())
         ...List<double>.from((cropPredData[year][selectedPredGrades] ?? [])
             .where((data) => data != null)
             .map((data) => data!.toDouble()))
     ];
     predCurrProductionData = [
-      for (var year in selectedPredYears.reversed)
+      for (var year in selectedPredYears..sort())
         if (year != '평년')
           ...List<double>.from((cropData[year][selectedPredGrades] ?? [])
               .where((data) => data != null)
@@ -125,20 +140,19 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
 
     // 계절지수 설정하기
     seasonalIndex = [
-      for (var year in selectedYears.reversed)
+      for (var year in selectedYears..sort())
         if (year != '평년')
           ...List<double>.from((cropData['monthly_seasonal_index'][year] ?? [])
               .where((data) => data != null)
               .map((data) => data!.toDouble()))
     ];
     seasonalPredIndex = [
-      for (var year in selectedPredYears.reversed)
+      for (var year in selectedPredYears..sort())
         ...List<double>.from(
             (cropPredData['monthly_seasonal_index'][year] ?? [])
                 .where((data) => data != null)
                 .map((data) => data!.toDouble()))
     ];
-    print(seasonalPredIndex);
 
     setState(() {});
   }
@@ -219,7 +233,6 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
           gradeColorMap[grade] = Colors.grey; // 지정되지 않은 경우 기본 색상
       }
     }
-    print(gradeColorMap);
     availablePredGrades = priceMockupData['selectedCrops'][selectedProduct]
                 ['prices'][selectedPriceType][priceCategory]['예측가격']
             [availableYears[0]]
@@ -311,7 +324,7 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
                         unit: cropData['act_analysis'] != null
                             ? '(${cropData['act_analysis']['currency_unit']})'
                             : '',
-                        hoverText: 'point.x 가격: point.y',
+                        hoverText: 'point.x: point.y',
                       ),
                       SeasonalBarWidget(
                         seasonalIndex: seasonalIndex,
