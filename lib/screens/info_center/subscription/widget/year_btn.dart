@@ -5,14 +5,12 @@ class YearButtonWidget extends StatefulWidget {
   final List<String> selectedYears;
   final void Function(List<String>) onYearsChanged;
   final Map<String, Color> yearColorMap;
-  final bool isContinuousView; // 그래프 이어서 보기 상태
 
   YearButtonWidget({
     required this.availableYears,
     required this.selectedYears,
     required this.onYearsChanged,
     required this.yearColorMap,
-    required this.isContinuousView,
   });
 
   @override
@@ -28,11 +26,6 @@ class _YearButtonWidgetState extends State<YearButtonWidget> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: widget.availableYears.map((year) {
-          // 그래프 이어서 보기 활성화 시 평년 버튼 숨기기
-          if (widget.isContinuousView && year == '평년') {
-            return SizedBox.shrink(); // 비활성화된 위젯으로 대체
-          }
-
           final isSelected = widget.selectedYears.contains(year);
           final yearColor =
               widget.yearColorMap[year] ?? const Color(0xFFE1E1E1);
