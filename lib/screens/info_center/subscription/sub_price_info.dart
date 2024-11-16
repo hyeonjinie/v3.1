@@ -285,7 +285,6 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
                       });
                     },
                     yearColorMap: yearColorMap,
-                    isContinuousView: false,
                   ),
                   YearButtonWidget(
                     availableYears: availableGrades,
@@ -297,7 +296,6 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
                       });
                     },
                     yearColorMap: gradeColorMap,
-                    isContinuousView: false,
                   ),
                   const SizedBox(height: 16),
                   CurrentChart(
@@ -372,7 +370,6 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
                       });
                     },
                     yearColorMap: yearPredColorMap,
-                    isContinuousView: false,
                   ),
                   GradeButtonWidget(
                     onGradeChanged: (newSelectedForecast) {
