@@ -5,9 +5,11 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:v3_mvp/screens/info_center/bpi_detail/bpi_screen.dart';
+import 'package:v3_mvp/screens/info_center/subscription/new_subscription/new_subscription.dart';
 import 'package:v3_mvp/screens/info_center/subscription/sub_price_info.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted_page.dart';
 import 'package:v3_mvp/screens/info_center/widget/sd_market_info_list.dart';
+import 'package:v3_mvp/screens/market_order/market_order_screen.dart';
 import '../../../services/auth_provider.dart';
 import '../../../widgets/custom_appbar/custom_appbar.dart';
 import '../../widgets/custom_bottom_navigation_bar/custom_bottom_navigation_bar.dart';
@@ -15,6 +17,8 @@ import '../../widgets/font_size_helper/font_size_helper.dart';
 import '../../widgets/navigation_helper.dart'; // Import NavigationHelper
 
 class InfoCenterScreen extends StatefulWidget {
+  const InfoCenterScreen({Key? key}) : super(key: key);
+
   @override
   InfoCenterScreenState createState() => InfoCenterScreenState();
 }
@@ -110,9 +114,9 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
                       fontWeight: FontWeight.bold),
                   unselectedLabelStyle: TextStyle(
                       fontSize: getFontSize(context, FontSizeType.medium)),
-                  indicatorColor: Color(0xFF00AF66),
+                  indicatorColor: const Color(0xFF00AF66),
                   indicatorSize: TabBarIndicatorSize.tab,
-                  indicatorPadding: EdgeInsets.symmetric(horizontal: 10),
+                  indicatorPadding: const EdgeInsets.symmetric(horizontal: 10),
                   tabs: const [
                     Tab(text: '품목정보'),
                     Tab(text: 'BPI'),
@@ -121,15 +125,16 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
                   ],
                 ),
                 if (user != null)
-                  Container(
+                  SizedBox(
                     height: 2000,
                     child: TabBarView(
                       controller: _tabController,
                       children: [
-                        SingleChildScrollView(child: MarketInfoList()),
+                        const SingleChildScrollView(child: MarketInfoList()),
                         SingleChildScrollView(child: BpiScreen()),
-                        SingleChildScrollView(child: Container(child: Text('못난이 농산물 내용'))),
-                        SubscriptedPage(),
+                        SingleChildScrollView(
+                            child: Container(child: const Text('못난이 농산물 내용'))),
+                        const SubscriptionPage(),
                       ],
                     ),
                   ),
@@ -147,12 +152,13 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           Text(stock['name'],
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
+              style:
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
           Text("Current: ${stock['currentValue']}",
-              style: TextStyle(fontSize: 18)),
+              style: const TextStyle(fontSize: 18)),
           Text("Change: ${stock['change']} (${stock['changePercent']})",
-              style: TextStyle(fontSize: 16, color: Colors.green)),
+              style: const TextStyle(fontSize: 16, color: Colors.green)),
         ],
       ),
     );
