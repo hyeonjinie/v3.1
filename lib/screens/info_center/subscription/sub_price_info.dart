@@ -62,7 +62,7 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
     cropPredData = priceMockupData['selectedCrops'][selectedProduct]['prices']
         [selectedPriceType][priceCategory]['예측가격'];
 
-    // 선택된 연도들의 데이터 가져오기
+// 선택된 연도들의 데이터 가져오기
     currentProductionData = {
       for (var grade in selectedGrades)
         grade: [
@@ -166,9 +166,9 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
     for (int i = 0; i < availableYears.length; i++) {
       String year = availableYears[i];
       if (year == '평년') {
-        yearColorMap[year] = Color(0xFF78B060);
+        yearColorMap[year] = const Color(0xFF78B060);
       } else {
-        yearColorMap[year] = Color(0xFF0084FF);
+        yearColorMap[year] = const Color(0xFF0084FF);
       }
     }
 
@@ -184,9 +184,9 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
     for (int i = 0; i < availablePredYears.length; i++) {
       String year = availablePredYears[i];
       if (year == '평년') {
-        yearPredColorMap[year] = Color(0xFF78B060);
+        yearPredColorMap[year] = const Color(0xFF78B060);
       } else {
-        yearPredColorMap[year] = Color(0xFF0084FF);
+        yearPredColorMap[year] = const Color(0xFF0084FF);
       }
     }
   }
@@ -203,22 +203,22 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
     for (String grade in availableGrades) {
       switch (grade) {
         case '특':
-          gradeColorMap[grade] = Color(0xFFEB5C5C); // 특
+          gradeColorMap[grade] = const Color(0xFFEB5C5C); // 특
           break;
         case '상':
-          gradeColorMap[grade] = Color(0xFFFF9500); // 상
+          gradeColorMap[grade] = const Color(0xFFFF9500); // 상
           break;
         case '중':
-          gradeColorMap[grade] = Color(0xFFF8D32D); // 중
+          gradeColorMap[grade] = const Color(0xFFF8D32D); // 중
           break;
         case '하':
-          gradeColorMap[grade] = Color(0xFF9568EE); // 하
+          gradeColorMap[grade] = const Color(0xFF9568EE); // 하
           break;
         case '등급외':
-          gradeColorMap[grade] = Color(0xFFEE68C4); // 등급외
+          gradeColorMap[grade] = const Color(0xFFEE68C4); // 등급외
           break;
         case '해당없음':
-          gradeColorMap[grade] = Color(0xFF0084FF); // 해당없음
+          gradeColorMap[grade] = const Color(0xFF0084FF); // 해당없음
           break;
         default:
           gradeColorMap[grade] = Colors.grey; // 지정되지 않은 경우 기본 색상
@@ -323,7 +323,7 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
                 ],
               ),
             ),
-            Divider(),
+            const Divider(),
             const SizedBox(height: 20),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0),
