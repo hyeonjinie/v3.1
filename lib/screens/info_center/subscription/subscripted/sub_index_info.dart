@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:v3_mvp/screens/info_center/subscription/index_mock.dart';
-import 'package:v3_mvp/screens/info_center/subscription/widget/index_curr_chart.dart';
-import 'package:v3_mvp/screens/info_center/subscription/widget/pred_curr_chart.dart';
-import 'package:v3_mvp/screens/info_center/subscription/widget/price_table.dart';
-import 'package:v3_mvp/screens/info_center/subscription/widget/year_btn.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/mock_data/index_mock.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/index_curr_chart.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/pred_curr_chart.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/price_table.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/year_btn.dart';
 import 'package:v3_mvp/screens/utils/positive_negative_formatter.dart';
 
 class SubIndexInfo extends StatefulWidget {
