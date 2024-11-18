@@ -3,6 +3,10 @@ import 'package:v3_mvp/screens/info_center/subscription/new_subscription/mock_da
 import 'package:v3_mvp/screens/info_center/subscription/new_subscription/mock_data/mock_data.dart';
 import 'package:v3_mvp/screens/info_center/subscription/new_subscription/models/index.dart';
 import 'package:v3_mvp/screens/info_center/subscription/new_subscription/models/product.dart';
+import 'package:v3_mvp/screens/info_center/subscription/new_subscription/subscription_summery.dart';
+import 'package:intl/intl.dart';
+
+import '../widget/term_popup.dart';
 
 class ProductSelection {
   final Product product;
@@ -18,11 +22,11 @@ class ProductSelection {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ProductSelection &&
-          runtimeType == other.runtimeType &&
-          product == other.product &&
-          term == other.term &&
-          market == other.market;
+          other is ProductSelection &&
+              runtimeType == other.runtimeType &&
+              product == other.product &&
+              term == other.term &&
+              market == other.market;
 
   @override
   int get hashCode => product.hashCode ^ term.hashCode ^ market.hashCode;
@@ -42,11 +46,11 @@ class IndexSelection {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is IndexSelection &&
-          runtimeType == other.runtimeType &&
-          index == other.index &&
-          term == other.term &&
-          type == other.type;
+          other is IndexSelection &&
+              runtimeType == other.runtimeType &&
+              index == other.index &&
+              term == other.term &&
+              type == other.type;
 
   @override
   int get hashCode => index.hashCode ^ term.hashCode ^ type.hashCode;
@@ -63,6 +67,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   late MockApiData priceData;
   late MockApiData indexData;
   String selectedMode = '가격예측';
+  bool isSummaryView = false; // 화면 상태 변수
 
   // Selected values for price prediction
   String? selectedTerm;
@@ -149,51 +154,51 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   // 가격예측 필터링
   List<Product> getFilteredProducts() {
     return priceData.products?.where((product) {
-          if (selectedTerm != null &&
-              !product.filters.terms.contains(selectedTerm)) {
-            return false;
-          }
-          if (selectedMarket != null &&
-              !product.filters.markets.contains(selectedMarket)) {
-            return false;
-          }
-          if (selectedCategory != null &&
-              product.filters.category != selectedCategory) {
-            return false;
-          }
-          if (selectedSubtype != null &&
-              product.filters.subtype != selectedSubtype) {
-            return false;
-          }
-          if (selectedDetail != null &&
-              product.filters.detail != selectedDetail) {
-            return false;
-          }
-          return true;
-        }).toList() ??
+      if (selectedTerm != null &&
+          !product.filters.terms.contains(selectedTerm)) {
+        return false;
+      }
+      if (selectedMarket != null &&
+          !product.filters.markets.contains(selectedMarket)) {
+        return false;
+      }
+      if (selectedCategory != null &&
+          product.filters.category != selectedCategory) {
+        return false;
+      }
+      if (selectedSubtype != null &&
+          product.filters.subtype != selectedSubtype) {
+        return false;
+      }
+      if (selectedDetail != null &&
+          product.filters.detail != selectedDetail) {
+        return false;
+      }
+      return true;
+    }).toList() ??
         [];
   }
 
   // 지수 필터링
   List<Index> getFilteredIndices() {
     return indexData.indices?.where((index) {
-          if (selectedIndexTerm != null &&
-              !index.filters.term.contains(selectedIndexTerm)) {
-            return false;
-          }
-          if (selectedType != null && index.filters.type != selectedType) {
-            return false;
-          }
-          if (selectedIndexCategory != null &&
-              index.filters.category != selectedIndexCategory) {
-            return false;
-          }
-          if (selectedIndexDetail != null &&
-              index.filters.detail != selectedIndexDetail) {
-            return false;
-          }
-          return true;
-        }).toList() ??
+      if (selectedIndexTerm != null &&
+          !index.filters.term.contains(selectedIndexTerm)) {
+        return false;
+      }
+      if (selectedType != null && index.filters.type != selectedType) {
+        return false;
+      }
+      if (selectedIndexCategory != null &&
+          index.filters.category != selectedIndexCategory) {
+        return false;
+      }
+      if (selectedIndexDetail != null &&
+          index.filters.detail != selectedIndexDetail) {
+        return false;
+      }
+      return true;
+    }).toList() ??
         [];
   }
 
@@ -268,16 +273,40 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     double total = 0;
     for (var item in selectedItems) {
       if (item is ProductSelection) {
-        total += item.product.price;
+        final priceIndex = item.product.filters.terms.indexOf(item.term);
+        total += item.product.price[priceIndex].toDouble();
       } else if (item is IndexSelection) {
-        total += item.index.price;
+        final priceIndex = item.index.filters.term.indexOf(item.term);
+        total += item.index.price[priceIndex].toDouble();
       }
     }
     return total;
   }
 
+
+  // 중복된 항목 삭제 메서드
+  void removeRedundantSelections(dynamic newItem) {
+    setState(() {
+      selectedItems.removeWhere((item) {
+        if (item is ProductSelection && newItem is ProductSelection) {
+          return item.product == newItem.product && item.market == newItem.market;
+        } else if (item is IndexSelection && newItem is IndexSelection) {
+          return item.index == newItem.index && item.type == newItem.type;
+        }
+        return false;
+      });
+    });
+  }
+
+
+
   // 약관 동의 상태 업데이트
   void updateAgreementStatus({bool? all, bool? service, bool? additional}) {
+    if (selectedItems.isEmpty) {
+      _showSelectItemAlert();
+      return;
+    }
+
     setState(() {
       if (all != null) {
         allAgreed = all;
@@ -295,9 +324,53 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     });
   }
 
+  // 보기 버튼 클릭 시 약관 팝업을 열기 전에 선택 품목 확인
+  void _handleViewTerms1(VoidCallback onAgree) {
+    if (selectedItems.isEmpty) {
+      _showSelectItemAlert();
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => TermsPopupPage(onAgree: onAgree),
+      );
+    }
+  }
+
+  // 보기 버튼 클릭 시 약관 팝업을 열기 전에 선택 품목 확인
+  void _handleViewTerms2(VoidCallback onAgree) {
+    if (selectedItems.isEmpty) {
+      _showSelectItemAlert();
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => TermsAdditionalPopupPage(onAgree: onAgree),
+      );
+    }
+  }
+
+  void _showSelectItemAlert() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('알림'),
+          content: const Text('품목을 선택해 주세요.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('확인'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // UI 구성 요소 위젯들
-  Widget _buildOptionButton(
-      String text, bool isSelected, VoidCallback onPressed) {
+  Widget _buildOptionButton(String text, bool isSelected,
+      VoidCallback onPressed) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: SizedBox(
@@ -305,7 +378,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor:
-                isSelected ? const Color(0xFF11C278) : Colors.white,
+            isSelected ? const Color(0xFF11C278) : Colors.white,
             foregroundColor: isSelected ? Colors.white : Colors.black87,
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -435,9 +508,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                                   term: selectedTerm!,
                                   market: selectedMarket!,
                                 );
-                                if (!selectedItems.contains(newSelection)) {
-                                  selectedItems.add(newSelection);
-                                }
+                                removeRedundantSelections(newSelection);
+                                selectedItems.add(newSelection);
                               } else if (item is Index &&
                                   selectedIndexTerm != null &&
                                   selectedType != null) {
@@ -446,9 +518,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                                   term: selectedIndexTerm!,
                                   type: selectedType!,
                                 );
-                                if (!selectedItems.contains(newSelection)) {
-                                  selectedItems.add(newSelection);
-                                }
+                                removeRedundantSelections(newSelection);
+                                selectedItems.add(newSelection);
                               }
                             });
                           },
@@ -490,6 +561,10 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       },
     );
   }
+
+
+
+// ...
 
   Widget _buildSelectedItemsTable() {
     return Column(
@@ -552,6 +627,13 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                   TableCell(
                     child: Padding(
                       padding: EdgeInsets.all(12),
+                      child: Text('가격',
+                          style: TextStyle(fontWeight: FontWeight.w500)),
+                    ),
+                  ),
+                  TableCell(
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
                       child: SizedBox(width: 40),
                     ),
                   ),
@@ -559,6 +641,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
               ),
               ...selectedItems.map((item) {
                 if (item is ProductSelection) {
+                  final priceIndex = item.product.filters.terms.indexOf(item.term);
                   return TableRow(
                     decoration: BoxDecoration(
                       border: Border(
@@ -591,9 +674,18 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                         ),
                       ),
                       TableCell(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(
+                            '${NumberFormat.currency(locale: "ko_KR", symbol: "").format(item.product.price[priceIndex])} 원',
+                          ),
+                        ),
+                      ),
+                      TableCell(
                         child: IconButton(
                           onPressed: () {
                             setState(() {
+                              removeRedundantSelections(item);
                               selectedItems.remove(item);
                             });
                           },
@@ -604,6 +696,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                     ],
                   );
                 } else if (item is IndexSelection) {
+                  final priceIndex = item.index.filters.term.indexOf(item.term);
                   return TableRow(
                     decoration: BoxDecoration(
                       border: Border(
@@ -636,9 +729,18 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                         ),
                       ),
                       TableCell(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(
+                            '${NumberFormat.currency(locale: "ko_KR", symbol: "").format(item.index.price[priceIndex])} 원',
+                          ),
+                        ),
+                      ),
+                      TableCell(
                         child: IconButton(
                           onPressed: () {
                             setState(() {
+                              removeRedundantSelections(item);
                               selectedItems.remove(item);
                             });
                           },
@@ -659,8 +761,17 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
+    return Container(
+      child: isSummaryView
+          ? _buildSubscriptionSummary()
+          : _buildSubscriptionForm(),
+    );
+  }
+
+  Widget _buildSubscriptionForm() {
     return Container(
       child: SingleChildScrollView(
         child: Column(
@@ -681,14 +792,14 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                           child: _buildOptionButton(
                             '가격예측',
                             selectedMode == '가격예측',
-                            () => onModeChanged('가격예측'),
+                                () => onModeChanged('가격예측'),
                           ),
                         ),
                         Expanded(
                           child: _buildOptionButton(
                             '지수',
                             selectedMode == '지수',
-                            () => onModeChanged('지수'),
+                                () => onModeChanged('지수'),
                           ),
                         ),
                       ],
@@ -704,7 +815,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                               child: _buildOptionButton(
                                 term,
                                 selectedTerm == term,
-                                () => onTermSelected(term),
+                                    () => onTermSelected(term),
                               ),
                             ),
                         ],
@@ -719,7 +830,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                               child: _buildOptionButton(
                                 market,
                                 selectedMarket == market,
-                                () => onMarketSelected(market),
+                                    () => onMarketSelected(market),
                               ),
                             ),
                         ],
@@ -734,7 +845,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                               child: _buildOptionButton(
                                 category,
                                 selectedCategory == category,
-                                () => onCategorySelected(category),
+                                    () => onCategorySelected(category),
                               ),
                             ),
                         ],
@@ -763,7 +874,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                               selectedSubtype == null
                                   ? null
                                   : (value) =>
-                                      setState(() => selectedDetail = value),
+                                  setState(() => selectedDetail = value),
                             ),
                           ),
                         ],
@@ -781,82 +892,84 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                           ),
                         ),
                       ],
-                    ] else ...[
-                      // Index Mode
-                      Row(
-                        children: [
-                          for (final term in getOptionsForLevel(2))
-                            Expanded(
-                              child: _buildOptionButton(
-                                term,
-                                selectedIndexTerm == term,
-                                () => onIndexTermSelected(term),
+                    ] else
+                      ...[
+                        // Index Mode
+                        Row(
+                          children: [
+                            for (final term in getOptionsForLevel(2))
+                              Expanded(
+                                child: _buildOptionButton(
+                                  term,
+                                  selectedIndexTerm == term,
+                                      () => onIndexTermSelected(term),
+                                ),
                               ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Type
-                      Row(
-                        children: [
-                          for (final type in getOptionsForLevel(3))
-                            Expanded(
-                              child: _buildOptionButton(
-                                type,
-                                selectedType == type,
-                                () => onTypeSelected(type),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Categories
-                      Row(
-                        children: [
-                          for (final category in getOptionsForLevel(4))
-                            Expanded(
-                              child: _buildOptionButton(
-                                category,
-                                selectedIndexCategory == category,
-                                () => onIndexCategorySelected(category),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Detail dropdown
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDropdown(
-                              '선택하세요',
-                              getOptionsForLevel(5),
-                              selectedIndexDetail,
-                              selectedIndexCategory == null
-                                  ? null
-                                  : (value) => setState(
-                                      () => selectedIndexDetail = value),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 40),
-
-                      // 지수 목록 표시 (선택 가능한 데이터)
-                      if (isAllLevelsSelected) ...[
-                        Container(
-                          constraints: const BoxConstraints(maxWidth: 1200),
-                          alignment: Alignment.center,
-                          child: _buildGrid<Index>(
-                            items: getFilteredIndices(),
-                            getName: (index) => index.name,
-                          ),
+                          ],
                         ),
+                        const SizedBox(height: 16),
+
+                        // Type
+                        Row(
+                          children: [
+                            for (final type in getOptionsForLevel(3))
+                              Expanded(
+                                child: _buildOptionButton(
+                                  type,
+                                  selectedType == type,
+                                      () => onTypeSelected(type),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Categories
+                        Row(
+                          children: [
+                            for (final category in getOptionsForLevel(4))
+                              Expanded(
+                                child: _buildOptionButton(
+                                  category,
+                                  selectedIndexCategory == category,
+                                      () => onIndexCategorySelected(category),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Detail dropdown
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildDropdown(
+                                '선택하세요',
+                                getOptionsForLevel(5),
+                                selectedIndexDetail,
+                                selectedIndexCategory == null
+                                    ? null
+                                    : (value) =>
+                                    setState(
+                                            () => selectedIndexDetail = value),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 40),
+
+                        // 지수 목록 표시 (선택 가능한 데이터)
+                        if (isAllLevelsSelected) ...[
+                          Container(
+                            constraints: const BoxConstraints(maxWidth: 1200),
+                            alignment: Alignment.center,
+                            child: _buildGrid<Index>(
+                              items: getFilteredIndices(),
+                              getName: (index) => index.name,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
 
                     const SizedBox(height: 40),
                     const Divider(height: 1, color: Color(0xFFE0E0E0)),
@@ -877,10 +990,13 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '${calculateTotalPrice().toStringAsFixed(0).toString().replaceAllMapped(
-                                  RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+                            '${calculateTotalPrice()
+                                .toStringAsFixed(0)
+                                .toString()
+                                .replaceAllMapped(
+                              RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
                                   (match) => '${match[1]},',
-                                )}원',
+                            )}원',
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -907,6 +1023,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                           onChanged: (bool? value) {
                             updateAgreementStatus(all: value);
                           },
+                          activeColor: const Color(0xFF1E357D),
                         ),
                         const Text('전체동의')
                       ],
@@ -921,15 +1038,26 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                               onChanged: (bool? value) {
                                 updateAgreementStatus(service: value);
                               },
+                              activeColor: const Color(0xFF1E357D),
                             ),
                             const Text('예측 데이터 구독 서비스 이용 약관 (필수)'),
                           ],
                         ),
-                        const Text(
-                          '보기',
-                          style: TextStyle(
-                            color: Colors.blue,
-                            decoration: TextDecoration.underline,
+                        GestureDetector(
+                          onTap: () =>
+                              _handleViewTerms1(() {
+                                setState(() {
+                                  agreeServiceTerms = true;
+                                  allAgreed = agreeServiceTerms &&
+                                      agreeServiceAdditionalTerms;
+                                });
+                              }),
+                          child: const Text(
+                              '보기',
+                              style: TextStyle(
+                                color: Colors.blue,
+                                decoration: TextDecoration.underline,
+                              )
                           ),
                         ),
                       ],
@@ -944,15 +1072,26 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                               onChanged: (bool? value) {
                                 updateAgreementStatus(additional: value);
                               },
+                              activeColor: const Color(0xFF1E357D),
                             ),
                             const Text('예측 데이터 구독 서비스 부가 약관 (필수)'),
                           ],
                         ),
-                        const Text(
-                          '보기',
-                          style: TextStyle(
-                            color: Colors.blue,
-                            decoration: TextDecoration.underline,
+                        GestureDetector(
+                          onTap: () =>
+                              _handleViewTerms2(() {
+                                setState(() {
+                                  agreeServiceAdditionalTerms = true;
+                                  allAgreed = agreeServiceTerms &&
+                                      agreeServiceAdditionalTerms;
+                                });
+                              }),
+                          child: const Text(
+                              '보기',
+                              style: TextStyle(
+                                color: Colors.blue,
+                                decoration: TextDecoration.underline,
+                              )
                           ),
                         ),
                       ],
@@ -967,12 +1106,299 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 16,
+                                horizontal: 80, vertical: 26),
+                            backgroundColor: allAgreed
+                                ? const Color(0xFF1E357D)
+                                : const Color(0xFFDDE1E6),
+                          ),
+                          onPressed: allAgreed
+                              ? () {
+                            if (selectedItems.isEmpty) {
+                              _showSelectItemAlert();
+                            } else {
+                              // 페이지 이동 시 선택된 품목과 총 가격 전달
+                              setState(() {
+                                isSummaryView = true;
+                              });
+                            }
+                          }
+                              : null,
+                          child: const Text(
+                            '구독하기',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          onPressed: () {},
-                          child: const Text('구독하기'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubscriptionSummary() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 20),
+
+                    // 안내 텍스트
+                    const Text(
+                      '입금 확인이 되면 자동으로 품목 정보가 보입니다.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // 결제 금액
+                    const Text(
+                      '결제 금액',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${calculateTotalPrice().toStringAsFixed(0)
+                          .toString()
+                          .replaceAllMapped(
+                        RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+                            (match) => '${match[1]},',
+                      )}원',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // 입금 정보
+                    const Text(
+                      '입금정보',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF6F6F6),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '국민은행',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            '123456-78-123456',
+                            style: TextStyle(
+                              fontSize: 16,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            '(주)에스앤이컴퍼니',
+                            style: TextStyle(
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // 구독 품목 테이블
+                    const Text(
+                      '구독 품목',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (selectedItems.isNotEmpty)
+                      Table(
+                        border: TableBorder.all(
+                          color: const Color(0xFFE0E0E0),
+                          width: 1,
+                        ),
+                        children: [
+                          // 테이블 헤더
+                          const TableRow(
+                            decoration: BoxDecoration(
+                              color: Color(0xFFF6F6F6),
+                            ),
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.all(8.0),
+                                child: Text(
+                                  '품목',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.all(8.0),
+                                child: Text(
+                                  '구분',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.all(8.0),
+                                child: Text(
+                                  '기간',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.all(8.0),
+                                child: Text(
+                                  '시장',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.all(8.0),
+                                child: Text(
+                                  '가격',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          // 선택된 품목들을 테이블에 표시
+                          ...selectedItems.map((item) {
+                            if (item is ProductSelection) {
+                              final priceIndex = item.product.filters.terms
+                                  .indexOf(item.term);
+                              return TableRow(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(item.product.name),
+                                  ),
+                                  const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Text('가격'),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(item.term),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(item.market),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(
+                                      '${NumberFormat.currency(
+                                          locale: "ko_KR", symbol: "").format(
+                                          item.product.price[priceIndex])} 원',
+                                    ),
+                                  ),
+                                ],
+                              );
+                            } else if (item is IndexSelection) {
+                              final priceIndex = item.index.filters.term
+                                  .indexOf(item.term);
+                              return TableRow(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(item.index.name),
+                                  ),
+                                  const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Text('지수'),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(item.term),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(item.type),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(
+                                      '${NumberFormat.currency(
+                                          locale: "ko_KR", symbol: "").format(
+                                          item.index.price[priceIndex])} 원',
+                                    ),
+                                  ),
+                                ],
+                              );
+                            } else {
+                              return const TableRow(children: []);
+                            }
+                          }).toList(),
+                        ],
+                      )
+                    else
+                      const Text('구독 품목이 선택되지 않았습니다.'),
+                    const SizedBox(height: 60),
+
+                    // 수정하기 버튼
+                    Center(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 80, vertical: 26),
+                          backgroundColor: const Color(0xFF00AF66),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            isSummaryView = false;
+                          });
+                        },
+                        child: const Text(
+                          '수정하기',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -986,3 +1412,4 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     );
   }
 }
+

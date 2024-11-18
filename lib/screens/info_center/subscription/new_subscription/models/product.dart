@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // 가격예측 데이터 모델
 class Product {
   final String name;
-  final int price;
+  final List<int> price;
   final ProductFilters filters;
 
   Product({required this.name, required this.price, required this.filters});

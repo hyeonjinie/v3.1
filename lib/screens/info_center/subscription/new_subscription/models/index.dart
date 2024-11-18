@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // 지수 데이터 모델
 class Index {
   final String name;
-  final int price;
+  final List<int> price;
   final IndexFilters filters;
 
   Index({required this.name, required this.price, required this.filters});
