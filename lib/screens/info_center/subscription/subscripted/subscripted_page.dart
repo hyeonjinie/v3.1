@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:v3_mvp/screens/info_center/subscription/sub_index_info.dart';
-import 'package:v3_mvp/screens/info_center/subscription/sub_price_info.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/models/category_model.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/service/category_service.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/sub_index_info.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/sub_price_info.dart';
 
 class SubscriptedPage extends StatefulWidget {
   const SubscriptedPage({Key? key}) : super(key: key);
@@ -10,7 +12,33 @@ class SubscriptedPage extends StatefulWidget {
 }
 
 class _SubscriptedPageState extends State<SubscriptedPage> {
-  bool isPriceSelected = true; // '가격' 버튼이 선택된 상태
+  final CategoryService _service = CategoryService();
+  late List<Category> categories;
+  bool isPriceSelected = true;
+
+  // 선택 상태를 관리하는 변수
+  late Map<int, String> selectedOptions;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateCategories();
+  }
+
+  // 카테고리 및 선택 옵션 초기화
+  void _updateCategories() {
+    categories = isPriceSelected ? _service.getPriceCategories() : _service.getIndexCategories();
+    selectedOptions = {
+      2: categories
+          .firstWhere((cat) => cat.level == 2)
+          .options
+          .first, // Level 2의 첫 번째 옵션
+      3: categories
+          .firstWhere((cat) => cat.level == 3)
+          .options
+          .first, // Level 3의 첫 번째 옵션
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +61,7 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
                         child: _buildToggleButton('가격', isPriceSelected, () {
                           setState(() {
                             isPriceSelected = true;
+                            _updateCategories(); // '가격' 카테고리로 업데이트
                           });
                         }),
                       ),
@@ -44,6 +73,7 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
                         child: _buildToggleButton('지수', !isPriceSelected, () {
                           setState(() {
                             isPriceSelected = false;
+                            _updateCategories(); // '지수' 카테고리로 업데이트
                           });
                         }),
                       ),
@@ -51,7 +81,7 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
               // 관리 버튼
               TextButton(
                 onPressed: () {
@@ -67,6 +97,23 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
                 child: const Text('관리'),
               ),
             ],
+          ),
+        ),
+        const SizedBox(
+          height: 8,
+        ),
+        // 2행: Level2 버튼
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Row(
+            children: _buildLevelButtons(2),
+          ),
+        ),
+        // 3행: Level3 버튼
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Row(
+            children: _buildLevelButtons(3),
           ),
         ),
         // 정보 영역 (스크롤 가능)
@@ -102,5 +149,31 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
         ),
       ),
     );
+  }
+
+  // Level 버튼 생성
+  List<Widget> _buildLevelButtons(int level) {
+    final levelCategory = categories.firstWhere((cat) => cat.level == level);
+    return List.generate(levelCategory.options.length, (index) {
+      final option = levelCategory.options[index];
+      final isSelected = selectedOptions[level] == option;
+      return Expanded(
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: index == 0 ? 0 : 4,
+            right: index == levelCategory.options.length - 1 ? 0 : 4,
+          ),
+          child: SizedBox(
+            height: 40,
+            child: _buildToggleButton(option, isSelected, () {
+              setState(() {
+                selectedOptions[level] = option; // 선택된 옵션 업데이트
+                print(selectedOptions);
+              });
+            }),
+          ),
+        ),
+      );
+    });
   }
 }

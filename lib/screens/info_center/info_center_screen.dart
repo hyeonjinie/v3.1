@@ -6,7 +6,8 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:v3_mvp/screens/info_center/bpi_detail/bpi_screen.dart';
 import 'package:v3_mvp/screens/info_center/subscription/new_subscription/new_subscription.dart';
-import 'package:v3_mvp/screens/info_center/subscription/sub_price_info.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/sub_price_info.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/subscripted_page.dart';
 
 import 'package:v3_mvp/screens/info_center/widget/sd_market_info_list.dart';
 
@@ -128,9 +129,7 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
                         SingleChildScrollView(
                           child: BpiScreen(),
                         ),
-                        const SingleChildScrollView(
-                          child: SubsInfoPage(),
-                        ),
+                        SubscriptedPage(),
                         const SingleChildScrollView(
                           child: SubscriptionPage(),
                         ),

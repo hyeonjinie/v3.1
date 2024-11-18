@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:v3_mvp/screens/info_center/subscription/price_mock.dart';
-import 'package:v3_mvp/screens/info_center/subscription/widget/current_chart.dart';
-import 'package:v3_mvp/screens/info_center/subscription/widget/grade_btn.dart';
-import 'package:v3_mvp/screens/info_center/subscription/widget/pred_curr_chart.dart';
-import 'package:v3_mvp/screens/info_center/subscription/widget/price_table.dart';
-import 'package:v3_mvp/screens/info_center/subscription/widget/seasonal_bar.dart';
-import 'package:v3_mvp/screens/info_center/subscription/widget/year_btn.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/mock_data/price_mock.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/current_chart.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/grade_btn.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/pred_curr_chart.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/price_table.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/seasonal_bar.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/year_btn.dart';
 import 'package:v3_mvp/widgets/font_size_helper/font_size_helper.dart';
 
 class SubsInfoPage extends StatefulWidget {

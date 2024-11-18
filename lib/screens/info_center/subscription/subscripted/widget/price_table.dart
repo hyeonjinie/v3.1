@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:v3_mvp/screens/info_center/subscription/widget/tooltip.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/tooltip.dart';
 
 class PriceTableWidget extends StatelessWidget {
   final List<List<String>> dataRows; // Dynamic data rows
