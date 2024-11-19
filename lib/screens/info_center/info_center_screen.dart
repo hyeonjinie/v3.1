@@ -129,7 +129,9 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
                         SingleChildScrollView(
                           child: BpiScreen(),
                         ),
-                        SubscriptedPage(),
+                        const SingleChildScrollView(
+                          child: SubscriptedPage(),
+                        ),
                         const SingleChildScrollView(
                           child: SubscriptionPage(),
                         ),
