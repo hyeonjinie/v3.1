@@ -140,9 +140,6 @@ class _SubIndexInfoState extends State<SubIndexInfo> {
       }
     });
 
-    print('predProductionData >> ${predProductionData}');
-    print('predCurrProductionData >> ${predCurrProductionData}');
-    print('date >> ${date}');
     setState(() {});
   }
 
