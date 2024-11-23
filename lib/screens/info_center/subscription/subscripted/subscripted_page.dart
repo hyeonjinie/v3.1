@@ -15,10 +15,11 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
   final CategoryService _service = CategoryService();
 
   late List<Category> categories = [];
-  String selectedCategoryType = "가격";
+  String selectedCategoryType = "지수";
   String? previousCategoryType;
   late Map<int, String> selectedOptions = {};
   bool isLoading = true;
+  bool catIsEmpty = false;
 
   @override
   void initState() {
@@ -38,17 +39,22 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
       categories = fetchedCategories;
 
       // `selectedOptions` 초기화 조건 확장
-      if (selectedOptions.isEmpty ||
-          previousCategoryType != selectedCategoryType) {
-        selectedOptions = {
-          2: categories.firstWhere((cat) => cat.level == 2).options.first,
-          3: categories.firstWhere((cat) => cat.level == 3).options.first,
-        };
+      if (categories[1].options.isNotEmpty) {
+        if (selectedOptions.isEmpty ||
+            previousCategoryType != selectedCategoryType) {
+          selectedOptions = {
+            2: categories.firstWhere((cat) => cat.level == 2).options.first,
+            3: categories.firstWhere((cat) => cat.level == 3).options.first,
+          };
+          catIsEmpty = false;
+        }
+      } else {
+        catIsEmpty = true;
       }
+      print(catIsEmpty);
 
       // 현재 카테고리 타입을 이전 값으로 업데이트
       previousCategoryType = selectedCategoryType;
-
       isLoading = false;
     });
 
@@ -268,29 +274,48 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // 두 번째 행: Level2 버튼
-                    Row(
-                      children: _buildLevelButtons(2),
-                    ),
-                    const SizedBox(height: 16),
-                    // 세 번째 행: Level3 버튼
-                    Row(
-                      children: _buildLevelButtons(3),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      constraints: const BoxConstraints(maxWidth: 1200),
-                      alignment: Alignment.center,
-                      child: _buildGrid<dynamic>(
-                        items: selectedProd,
-                        getName: (product) => product.name,
-                      ),
-                    ),
+                    // 두 번째 행: Level2 버튼, Level3 버튼 및 그리드 요소를 catIsEmpty 상태에 따라 조건부로 보여줌
+                    catIsEmpty
+                        ? Center(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 32.0),
+                              child: Text(
+                                '구독 품목이 없습니다',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children: [
+                              Row(
+                                children: _buildLevelButtons(2),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: _buildLevelButtons(3),
+                              ),
+                              const SizedBox(height: 16),
+                              Container(
+                                constraints:
+                                    const BoxConstraints(maxWidth: 1200),
+                                alignment: Alignment.center,
+                                child: _buildGrid<dynamic>(
+                                  items: selectedProd,
+                                  getName: (product) => product.name,
+                                ),
+                              ),
+                            ],
+                          ),
                   ],
                 ),
               ),
               // 정보 영역 (스크롤 가능)
-              selectedCategoryType == "가격" ? SubsInfoPage() : SubIndexInfo(),
+              if (!catIsEmpty)
+                selectedCategoryType == "가격" ? SubsInfoPage() : SubIndexInfo(),
             ],
           );
   }

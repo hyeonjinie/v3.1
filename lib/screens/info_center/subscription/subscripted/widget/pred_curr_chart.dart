@@ -2,42 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 class TrendChart extends StatelessWidget {
-  final List<dynamic?> latestPred;
-  final List<dynamic?> latestActual;
-  final List<String> date;
-  final String actualName;
-  final String predictedName;
-  final String unit;
+  final Map<String, dynamic> predProductionData;
 
-  TrendChart({
-    required this.latestPred,
-    required this.latestActual,
-    required this.date,
-    required this.actualName,
-    required this.predictedName,
-    required this.unit,
-  });
+  TrendChart({required this.predProductionData});
 
   @override
   Widget build(BuildContext context) {
-    // 실제 데이터와 예측 데이터 각각의 x, y 값을 매핑
+    final predData = predProductionData.values.first;
+
+    // 날짜, 실제 가격, 예측 가격
+    final List<String> date = List<String>.from(predData['date']);
+    final List<dynamic> actualPrice = List<dynamic>.from(predData['act_price']);
+    final List<dynamic> predictedPrice = List<dynamic>.from(predData['pred_price']);
+
+    // ChartData로 변환
     List<ChartData> actualData = List.generate(
-      latestActual.length,
-      (index) => ChartData(date[index], latestActual[index]),
+      actualPrice.length,
+      (index) => ChartData(date[index], actualPrice[index]),
     );
 
-    List<ChartData> predData = List.generate(
+    List<ChartData> predDataList = List.generate(
       date.length,
-      (index) => ChartData(date[index], latestPred[index]),
+      (index) => ChartData(date[index], predictedPrice[index]),
     );
 
     final TooltipBehavior tooltipBehavior = TooltipBehavior(enable: true);
     final TrackballBehavior trackballBehavior = TrackballBehavior(
-      enable: true, // Trackball 활성화
-      activationMode: ActivationMode.singleTap, // 탭으로 활성화
-      lineType: TrackballLineType.vertical, // 수직선으로 트랙볼 표시
-      tooltipSettings: InteractiveTooltip(
-        enable: true, // 트랙볼에 툴팁 표시
+      enable: true,
+      activationMode: ActivationMode.singleTap,
+      lineType: TrackballLineType.vertical,
+      tooltipSettings: const InteractiveTooltip(
+        enable: true,
         color: Colors.black54,
         textStyle: TextStyle(color: Colors.white),
       ),
@@ -45,51 +40,47 @@ class TrendChart extends StatelessWidget {
 
     return Stack(
       children: [
-        // 차트 본체
         SfCartesianChart(
           primaryXAxis: CategoryAxis(),
           primaryYAxis: NumericAxis(),
-          legend: Legend(isVisible: true, alignment: ChartAlignment.far),
+          legend: const Legend(
+            isVisible: true,
+            alignment: ChartAlignment.far, 
+            position: LegendPosition.top, 
+            toggleSeriesVisibility: true, 
+            overflowMode: LegendItemOverflowMode.wrap, 
+          ),
           tooltipBehavior: tooltipBehavior,
-          trackballBehavior: trackballBehavior, // 트랙볼 기능 추가
+          trackballBehavior: trackballBehavior,
           series: <CartesianSeries<ChartData, String>>[
             LineSeries<ChartData, String>(
               dataSource: actualData,
               xValueMapper: (ChartData data, _) => data.x,
               yValueMapper: (ChartData data, _) => data.y,
-              name: actualName,
+              name: '실제 가격',
               color: Color(0xFF67CEB8),
-              animationDuration: 0, // 애니메이션 비활성화
+              animationDuration: 0,
               markerSettings: MarkerSettings(
                 isVisible: actualData.length <= 12,
-                height: 4,
-                width: 4,
+                height: 1,
+                width: 1,
               ),
             ),
             LineSeries<ChartData, String>(
-              dataSource: predData,
+              dataSource: predDataList,
               xValueMapper: (ChartData data, _) => data.x,
               yValueMapper: (ChartData data, _) => data.y,
-              name: predictedName,
+              name: '예측 가격',
               color: Color(0xFF4F8A97),
               dashArray: <double>[1, 5],
-              animationDuration: 0, // 애니메이션 비활성화
+              animationDuration: 0,
               markerSettings: MarkerSettings(
-                isVisible: actualData.length <= 12,
-                height: 4,
-                width: 4,
+                isVisible: predDataList.length <= 12,
+                height: 1,
+                width: 1,
               ),
             ),
           ],
-        ),
-        // 차트 상단에 텍스트 추가
-        Positioned(
-          top: 15,
-          left: 10, 
-          child: Text(
-            unit,
-            style: TextStyle(fontSize: 12),
-          ),
         ),
       ],
     );
