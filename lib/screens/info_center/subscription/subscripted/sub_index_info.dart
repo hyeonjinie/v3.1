@@ -365,14 +365,14 @@ class _SubIndexInfoState extends State<SubIndexInfo> {
                   const SizedBox(
                     height: 10,
                   ),
-                  TrendChart(
-                    latestPred: predProductionData,
-                    latestActual: predCurrProductionData,
-                    date: date,
-                    actualName: '현재',
-                    predictedName: '예측',
-                    unit: '',
-                  ),
+                  // TrendChart(
+                  //   latestPred: predProductionData,
+                  //   latestActual: predCurrProductionData,
+                  //   date: date,
+                  //   actualName: '현재',
+                  //   predictedName: '예측',
+                  //   unit: '',
+                  // ),
                   const SizedBox(
                     height: 20,
                   ),
