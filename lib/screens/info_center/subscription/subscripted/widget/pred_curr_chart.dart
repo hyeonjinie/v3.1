@@ -13,7 +13,8 @@ class TrendChart extends StatelessWidget {
     // 날짜, 실제 가격, 예측 가격
     final List<String> date = List<String>.from(predData['date']);
     final List<dynamic> actualPrice = List<dynamic>.from(predData['act_price']);
-    final List<dynamic> predictedPrice = List<dynamic>.from(predData['pred_price']);
+    final List<dynamic> predictedPrice =
+        List<dynamic>.from(predData['pred_price']);
 
     // ChartData로 변환
     List<ChartData> actualData = List.generate(
@@ -41,14 +42,29 @@ class TrendChart extends StatelessWidget {
     return Stack(
       children: [
         SfCartesianChart(
-          primaryXAxis: CategoryAxis(),
-          primaryYAxis: NumericAxis(),
+          primaryXAxis: const CategoryAxis(
+              majorGridLines: MajorGridLines(width: 0),
+              labelRotation: -20,
+              labelStyle: TextStyle(
+                color: Color(0xFF666C77),
+                fontSize: 12,
+              )),
+          primaryYAxis: const NumericAxis(
+            majorGridLines: MajorGridLines(
+              width: 0.5,
+              color: Color(0xFFEEEEEE),
+            ),
+            labelStyle: TextStyle(
+              color: Color(0xFF666C77),
+              fontSize: 12,
+            ),
+          ),
           legend: const Legend(
             isVisible: true,
-            alignment: ChartAlignment.far, 
-            position: LegendPosition.top, 
-            toggleSeriesVisibility: true, 
-            overflowMode: LegendItemOverflowMode.wrap, 
+            alignment: ChartAlignment.far,
+            position: LegendPosition.top,
+            toggleSeriesVisibility: true,
+            overflowMode: LegendItemOverflowMode.wrap,
           ),
           tooltipBehavior: tooltipBehavior,
           trackballBehavior: trackballBehavior,

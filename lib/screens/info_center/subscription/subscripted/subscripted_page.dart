@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/models/category_model.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/service/category_service.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/sub_index_info.dart';
@@ -15,11 +16,20 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
   final CategoryService _service = CategoryService();
 
   late List<Category> categories = [];
-  String selectedCategoryType = "지수";
+  String selectedCategoryType = "가격";
   String? previousCategoryType;
   late Map<int, String> selectedOptions = {};
   bool isLoading = true;
   bool catIsEmpty = false;
+  String selectedProdName = ""; // 가격 파라미터(name)
+  int selectedProdDay = 1; // 가격 파라미터(filters: terms)
+  String selectedIdxName = ""; // 지수 파라미터(name)
+  String selectedProdCategory = ""; // 지수 파라미터(filters: category)
+  String selectedProdType = ""; // 지수 파라미터(filters: type)
+  String selectedDetail = ""; // 지수 파라미터(filters: detail)
+  int selectedIdxDay = 1; // 지수 파라미터(filters: terms)
+
+  int? selectedItemIndex;
 
   @override
   void initState() {
@@ -30,6 +40,7 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
   Future<void> _updateCategories() async {
     setState(() {
       isLoading = true;
+      catIsEmpty = false;
     });
 
     final fetchedCategories =
@@ -38,7 +49,6 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
     setState(() {
       categories = fetchedCategories;
 
-      // `selectedOptions` 초기화 조건 확장
       if (categories[1].options.isNotEmpty) {
         if (selectedOptions.isEmpty ||
             previousCategoryType != selectedCategoryType) {
@@ -51,59 +61,73 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
       } else {
         catIsEmpty = true;
       }
-      print(catIsEmpty);
+
+      selectedItemIndex = 0;
 
       // 현재 카테고리 타입을 이전 값으로 업데이트
       previousCategoryType = selectedCategoryType;
       isLoading = false;
     });
 
-    // 필터링 호출
     selectedCategoryType == '가격' ? _filterProducts() : _filterIndices();
   }
 
   // 필터링된 selectedProd 리스트
   List<dynamic> selectedProd = [];
 
-  // 가격 - markets와 category 파라미터를 기반으로 필터링
   Future<void> _filterProducts() async {
     final selectedMarket = selectedOptions[2];
     final selectedCategory = selectedOptions[3];
 
     if (selectedMarket != null && selectedCategory != null) {
-      // CategoryService에서 fetchProducts() 호출하여 데이터를 필터링
       final products = await _service.fetchProducts(selectedCategoryType);
 
-      setState(() {
-        selectedProd = products.where((product) {
-          return product.filters['markets'] == selectedMarket &&
-              product.filters['category'] == selectedCategory;
-        }).toList();
-      });
+      final filtered = products.where((product) {
+        return product.filters['markets'] == selectedMarket &&
+            product.filters['category'] == selectedCategory;
+      }).toList();
+
+      if (filtered.isNotEmpty) {
+        setState(() {
+          selectedProd = filtered;
+          selectedProdName = filtered[0].name;
+          selectedProdDay =
+              int.tryParse(filtered[0].filters['terms']!.substring(2)) ?? 1;
+        });
+      }
     }
   }
 
-  // 가격 - markets와 category 파라미터를 기반으로 필터링
   Future<void> _filterIndices() async {
     final selectedType = selectedOptions[2];
     final selectedCategory = selectedOptions[3];
 
     if (selectedType != null && selectedCategory != null) {
-      // CategoryService에서 fetchProducts() 호출하여 데이터를 필터링
       final indices = await _service.fetchIndices(selectedCategoryType);
 
-      setState(() {
-        selectedProd = indices.where((indice) {
-          return indice.filters['type'] == selectedType &&
-              indice.filters['category'] == selectedCategory;
-        }).toList();
-      });
+      final filtered = indices.where((indice) {
+        return indice.filters['type'] == selectedType &&
+            indice.filters['category'] == selectedCategory;
+      }).toList();
+
+      if (filtered.isNotEmpty) {
+        setState(() {
+          selectedProd = filtered;
+          selectedIdxName = filtered[0].name;
+          selectedIdxDay =
+              int.tryParse(filtered[0].filters['terms']!.substring(2)) ?? 1;
+          selectedProdCategory = filtered[0].filters['category']!;
+          selectedProdType = filtered[0].filters['type']!;
+          selectedDetail = filtered[0].filters['detail']!;
+        });
+      }
     }
   }
 
   Widget _buildGrid<T>({
     required List<T> items,
     required String Function(T) getName,
+    required Map<String, String> Function(T) getFilter,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -152,6 +176,7 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
             itemCount: items.length,
             itemBuilder: (context, index) {
               final item = items[index];
+              final isSelected = index == selectedItemIndex;
               return Container(
                 padding: const EdgeInsets.all(4),
                 child: Column(
@@ -161,12 +186,36 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
                         aspectRatio: 1,
                         child: InkWell(
                           onTap: () {
-                            setState(() {});
+                            setState(() {
+                              selectedItemIndex = index;
+                              final terms = getFilter(item)['terms'];
+                              if (selectedCategoryType == '지수') {
+                                selectedIdxName = getName(item);
+                                selectedProdCategory =
+                                    getFilter(item)['category']!;
+                                selectedProdType = getFilter(item)['type']!;
+                                selectedDetail = getFilter(item)['detail']!;
+                                selectedIdxDay =
+                                    terms != null && terms.startsWith("D+")
+                                        ? int.tryParse(terms.substring(2)) ?? 1
+                                        : 1;
+                              } else {
+                                selectedProdName = getName(item);
+                                selectedProdDay =
+                                    terms != null && terms.startsWith("D+")
+                                        ? int.tryParse(terms.substring(2)) ?? 1
+                                        : 1;
+                              }
+                            });
                           },
                           borderRadius: BorderRadius.circular(4),
                           child: Container(
                             decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey[300]!),
+                              border: Border.all(
+                                color: isSelected
+                                    ? Color(0xFF469E79)
+                                    : Colors.grey[300]!,
+                              ),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Icon(
@@ -306,6 +355,7 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
                                 child: _buildGrid<dynamic>(
                                   items: selectedProd,
                                   getName: (product) => product.name,
+                                  getFilter: (product) => product.filters,
                                 ),
                               ),
                             ],
@@ -314,8 +364,23 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
                 ),
               ),
               // 정보 영역 (스크롤 가능)
-              if (!catIsEmpty)
-                selectedCategoryType == "가격" ? SubsInfoPage() : SubIndexInfo(),
+              if (selectedCategoryType == "가격" &&
+                  !catIsEmpty &&
+                  selectedProdName.isNotEmpty)
+                SubsInfoPage(
+                  selectedProdName: selectedProdName,
+                  selectedProdDay: selectedProdDay,
+                ),
+              if (selectedCategoryType == "지수" &&
+                  !catIsEmpty &&
+                  selectedIdxName.isNotEmpty)
+                SubIndexInfo(
+                  selectedProdName: selectedIdxName,
+                  selectedProdCategory: selectedProdCategory,
+                  selectedProdType: selectedProdType,
+                  selectedDetail: selectedDetail,
+                  selectedProdDay: selectedIdxDay,
+                ),
             ],
           );
   }
@@ -349,7 +414,7 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
         child: Text(
           title,
           style: TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
         ),
       ),
