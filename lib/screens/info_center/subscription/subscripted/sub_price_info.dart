@@ -135,7 +135,6 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
   }
 }
 
-
   // 연도 버튼 컬러 매핑
   void _updateYearColorMap() {
     yearColorMap.clear(); // 기존 맵 초기화
@@ -274,6 +273,7 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
     }
     seasonalIndexDate = currentProductionData[selectedGrades[0]]["date"];
 
+    // 예측 
     predProductionData[selectedPredGrades] = {
       "act_price": <double?>[],
       "pred_price": <double?>[],
@@ -281,7 +281,6 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
     };
 
     for (var year in selectedPredYears..sort()) {
-      // 선택된 년도 데이터를 가져옴
       final yearData = priceInfo?.predict.years[year];
       if (yearData != null && yearData.grades.containsKey(selectedPredGrades)) {
         final gradeData = yearData.grades[selectedPredGrades];
@@ -308,7 +307,6 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
       }
     }
     predSeasonalIndexDate = predProductionData[selectedPredGrades[0]]["date"];
-
     setState(() {});
   }
 

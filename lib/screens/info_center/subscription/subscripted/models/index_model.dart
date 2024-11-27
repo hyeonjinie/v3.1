@@ -1,16 +1,16 @@
 class ProdData {
   final ActualIndexData actual;
-  // final PredictData predict;
+  final PredictData predict;
 
   ProdData({
     required this.actual,
-    // required this.predict,
+    required this.predict,
   });
 
   factory ProdData.fromJson(Map<String, dynamic> json) {
     return ProdData(
       actual: ActualIndexData.fromJson(json['actual'] ?? {}),
-      // predict: PredictData.fromJson(json['predict'] ?? {}),
+      predict: PredictData.fromJson(json['predict'] ?? {}),
     );
   }
 }
@@ -146,22 +146,84 @@ class IndexActAnalysis {
 }
 
 class PredictData {
-  final Map<String, List<double?>> predSeasonal;
+  final Map<String, PredYearData> years;
+  final PredAnalysis? predAnalysis;
 
   PredictData(
-      {required this.predSeasonal});
+      {required this.years, this.predAnalysis});
 
   factory PredictData.fromJson(Map<String, dynamic> json) {
     return PredictData(
-      
-      predSeasonal: (json['pred_seasonal_index'] as Map<String, dynamic>? ?? {})
-          .map((key, value) => MapEntry(
-                key,
-                (value as List<dynamic>)
-                    .map((item) => (item as num).toDouble())
-                    .toList(),
-              )),
-      
+      years: Map.fromEntries(
+        json.entries
+            .where((entry) =>
+                entry.key != 'pred_analysis')
+            .map((entry) =>
+                MapEntry(entry.key, PredYearData.fromJson(entry.value))),
+      ),
+      predAnalysis: json['pred_analysis'] != null
+          ? PredAnalysis.fromJson(json['pred_analysis'])
+          : null,
+    );
+  }
+}
+
+class PredYearData {
+  final List<double?> index;
+  final List<String?> date;
+
+  PredYearData({
+    required this.index,
+    required this.date,
+  });
+
+  factory PredYearData.fromJson(Map<String, dynamic> json) {
+    return PredYearData(
+      index: (json['index'] as List<dynamic>? ?? [])
+          .map((item) => item != null ? (item as num).toDouble() : null)
+          .toList(),
+      date: (json['date'] as List<dynamic>? ?? [])
+          .map((item) => item != null ? item as String : null)
+          .toList(),
+    );
+  }
+}
+
+class PredAnalysis {
+  final String date;
+  final double predictedIndex;
+  final double rateComparedLastValue;
+  final List<double> range;
+  final double outOfRangeProbability;
+  final double stabilitySectionProbability;
+  final double consistencyIndex;
+  final double resilienceIndex;
+  final double signalIndex;
+
+  PredAnalysis({
+    required this.date,
+    required this.predictedIndex,
+    required this.rateComparedLastValue,
+    required this.range,
+    required this.outOfRangeProbability,
+    required this.stabilitySectionProbability,
+    required this.consistencyIndex,
+    required this.resilienceIndex,
+    required this.signalIndex,
+  });
+
+  factory PredAnalysis.fromJson(Map<String, dynamic> json) {
+    return PredAnalysis(
+      date: json['date'],
+      predictedIndex: (json['predicted_index'] as num).toDouble(),
+      rateComparedLastValue: (json['rate_compared_last_value'] as num).toDouble(),
+      range: List<double>.from(json['range']),
+      outOfRangeProbability: (json['out_of_range_probability'] as num).toDouble(),
+      stabilitySectionProbability:
+          (json['stability_section_probability'] as num).toDouble(),
+      consistencyIndex: (json['consistency_index'] as num).toDouble(),
+      resilienceIndex: (json['resilience_index'] as num).toDouble(),
+      signalIndex: (json['signal_index'] as num).toDouble(),
     );
   }
 }
