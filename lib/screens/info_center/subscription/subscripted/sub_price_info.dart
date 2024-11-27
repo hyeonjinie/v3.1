@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:v3_mvp/screens/info_center/subscription/subscripted/mock_data/price_mock.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/models/price_model.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/service/prod_info_service.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/current_chart.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/grade_btn.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/pred_curr_chart.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/pred_table.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/price_table.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/seasonal_bar.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/year_btn.dart';
-import 'package:v3_mvp/widgets/font_size_helper/font_size_helper.dart';
+import 'package:v3_mvp/screens/utils/number_formatter.dart';
+import 'package:v3_mvp/screens/utils/positive_negative_formatter.dart';
 
 class SubsInfoPage extends StatefulWidget {
-  const SubsInfoPage({Key? key}) : super(key: key);
+  final String selectedProdName;
+  final int selectedProdDay;
+
+  const SubsInfoPage(
+      {Key? key, required this.selectedProdName, required this.selectedProdDay})
+      : super(key: key);
 
   @override
   State<SubsInfoPage> createState() => _SubsInfoPageState();
@@ -21,7 +27,8 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
   //공통
   final PriceService _priceService = PriceService();
   late CropData? priceInfo;
-  String selectedProduct = "딸기";
+  late String selectedProduct;
+  late int selectedProductDay;
   bool isLoading = true;
 
   // 분석
@@ -31,8 +38,9 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
   List<String> availableGrades = [];
   List<String> selectedGrades = [];
   Map<String, dynamic> currentProductionData = {}; //선택한 년도에 대한 분석데이터
-  Map<String, dynamic> commProductionData = {}; //선택한 년도에 대한 분석데이터
+  Map<String, dynamic> commProductionData = {}; //선택한 년도에 대한 평년데이터
   List<double> seasonalIndex = []; //선택한 년도에 대한 계절데이터
+  List<String?> seasonalIndexDate = [];
   Map<String, Color> yearColorMap = {};
   Map<String, Color> gradeColorMap = {};
 
@@ -44,41 +52,89 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
   String selectedPredGrades = '';
   Map<String, dynamic> predProductionData = {}; //선택한 년도에 대한 예측데이터
   List<double> seasonalPredIndex = []; //선택한 년도에 대한 계절 예측데이터
+  List<String?> predSeasonalIndexDate = [];
   Map<String, Color> yearPredColorMap = {};
+  Map<String, dynamic> predTableData = {};
 
   @override
   void initState() {
     super.initState();
+    selectedProduct = widget.selectedProdName;
+    selectedProductDay = widget.selectedProdDay;
     fetchAndPrintPriceInfo();
   }
 
   void fetchAndPrintPriceInfo() async {
     try {
-      priceInfo = await _priceService.getPriceData(selectedProduct);
-      // 분석
-      availableYears = priceInfo!.actual.years.keys.toList();
-      availableGrades =
-          priceInfo!.actual.years[availableYears[0]]!.grades.keys.toList();
-      selectedGrades = [availableGrades[0]];
-      actAnalysis = priceInfo!.actual.actAnalysis!;
-      // 예측
-      availablePredYears = priceInfo!.predict.years.keys.toList();
-      availablePredGrades =
-          priceInfo!.predict.years[availablePredYears[0]]!.grades.keys.toList();
-      selectedPredGrades = availablePredGrades[0];
-      predAnalysis = priceInfo!.predict.predAnalysis!;
-
-      _updateYearColorMap();
-      _updateGradeColorMap();
-      _updateChartData();
+      priceInfo =
+          await _priceService.getPriceData(selectedProduct, selectedProductDay);
     } catch (e) {
       print('Error fetching price data: $e');
     } finally {
       setState(() {
+        // 분석
+        availableYears = priceInfo!.actual.years.keys.toList();
+        availableGrades =
+            priceInfo!.actual.years[availableYears[0]]!.grades.keys.toList();
+        selectedGrades = [availableGrades[0]];
+        actAnalysis = priceInfo!.actual.actAnalysis!;
+        // // 예측
+        availablePredYears = priceInfo!.predict.years.keys.toList();
+        availablePredGrades = priceInfo!
+            .predict.years[availablePredYears[0]]!.grades.keys
+            .toList();
+        selectedPredGrades = availablePredGrades[0];
+        predAnalysis = priceInfo!.predict.predAnalysis!;
+
+        _updateYearColorMap();
+        _updateGradeColorMap();
+        _updateChartData();
+        _predPriceData();
         isLoading = false;
       });
     }
   }
+
+  // 예측 테이블 처리
+  void _predPriceData() {
+  for (var grade in availableGrades) {
+    // 각 등급에 대해 초기화
+    predTableData[grade] = {
+      "pred_price": <double?>[],
+      "pred_h_price": <double?>[],
+      "pred_l_price": <double?>[],
+    };
+
+    // 해당 연도 데이터 가져오기
+    final yearData = priceInfo?.predict.years[availablePredYears[0]];
+    if (yearData != null && yearData.grades.containsKey(grade)) {
+      final gradeData = yearData.grades[grade];
+      if (gradeData != null) {
+        final predPriceList = gradeData.predPrice ?? [];
+        final last15PredPrice = predPriceList.length > selectedProductDay
+            ? predPriceList.sublist(predPriceList.length - selectedProductDay)
+            : predPriceList;
+
+        predTableData[grade]!["pred_price"]!.addAll(last15PredPrice);
+
+        final predHPriceList = gradeData.predHPrice ?? [];
+        final last15PredHPrice = predHPriceList.length > selectedProductDay
+            ? predHPriceList.sublist(predHPriceList.length - selectedProductDay)
+            : predHPriceList;
+
+        predTableData[grade]!["pred_h_price"]!.addAll(last15PredHPrice);
+
+        final predLPriceList = gradeData.predLPrice ?? [];
+        final last15PredLPrice = predLPriceList.length > selectedProductDay
+            ? predLPriceList.sublist(predLPriceList.length - selectedProductDay)
+            : predLPriceList;
+
+        predTableData[grade]!["pred_l_price"]!.addAll(last15PredLPrice);
+      }
+    }
+  }
+}
+
 
   // 연도 버튼 컬러 매핑
   void _updateYearColorMap() {
@@ -111,22 +167,22 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
     for (String grade in availableGrades) {
       switch (grade) {
         case '특':
-          gradeColorMap[grade] = const Color(0xFFEB5C5C); // 특
+          gradeColorMap[grade] = const Color(0xFF0084FF); // 특
           break;
         case '상':
           gradeColorMap[grade] = const Color(0xFFFF9500); // 상
           break;
-        case '중':
-          gradeColorMap[grade] = const Color(0xFFF8D32D); // 중
+        case '보통':
+          gradeColorMap[grade] = const Color(0xFF78B060); // 중
           break;
         case '하':
           gradeColorMap[grade] = const Color(0xFF9568EE); // 하
           break;
         case '등급외':
-          gradeColorMap[grade] = const Color(0xFFEE68C4); // 등급외
+          gradeColorMap[grade] = const Color(0xFFEB5C5C); // 등급외
           break;
         case '해당없음':
-          gradeColorMap[grade] = const Color(0xFF0084FF); // 해당없음
+          gradeColorMap[grade] = const Color(0xFFEE68C4); // 해당없음
           break;
         default:
           gradeColorMap[grade] = Colors.grey; // 지정되지 않은 경우 기본 색상
@@ -139,6 +195,11 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
     currentProductionData.clear();
     commProductionData.clear();
     predProductionData.clear();
+    seasonalIndex.clear();
+    seasonalIndexDate.clear();
+    seasonalPredIndex.clear();
+    predSeasonalIndexDate.clear();
+    final sortedYears = [...selectedYears]..sort();
 
     for (var grade in selectedGrades) {
       // 선택된 등급별로 초기화
@@ -146,36 +207,72 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
         "price": <double?>[],
         "date": <String?>[],
       };
-
       commProductionData[grade] = {
         "price": <double?>[],
         "date": <String?>[],
       };
 
-      if (selectedYears.contains('평년')) {
-        final sortedYears = [...selectedYears]..remove('평년')..sort();
-        for (var year in sortedYears) {
-          var yearData;
-          yearData = priceInfo!.actual.commYears['평년']!.commyears[year];
+      for (var year in sortedYears) {
+        var yearData;
+        // '평년' 처리
+        if (selectedYears.contains('평년')) {
+          yearData = priceInfo?.actual.commYears['평년']?.commyears[year];
           if (yearData != null && yearData.grades.containsKey(grade)) {
             final gradeData = yearData.grades[grade];
+
+            // '평년' 데이터 처리
             commProductionData[grade]["price"]!.addAll(gradeData?.price);
-            commProductionData[grade]["date"]!.addAll(gradeData?.date);
+
+            final updatedDates = gradeData?.date
+                .map((date) => '$year-$date')
+                .cast<String>()
+                .toList();
+            commProductionData[grade]["date"]!.addAll(updatedDates ?? []);
+          } else {
+            // yearData가 null인 경우, 실제 데이터에서 date를 가져옴
+            final actualYearData = priceInfo?.actual.years[year];
+            if (actualYearData != null &&
+                actualYearData.grades.containsKey(grade)) {
+              final actualGradeData = actualYearData.grades[grade];
+
+              final updatedDates = actualGradeData?.date
+                  .map((date) => '$year-$date')
+                  .cast<String>()
+                  .toList();
+              commProductionData[grade]["date"]!.addAll(updatedDates ?? []);
+
+              // date 길이만큼 price에 0을 추가
+              final zeroPrices = List.filled(updatedDates?.length ?? 0, 0.0);
+              commProductionData[grade]["price"]!.addAll(zeroPrices);
+            }
           }
         }
-      }
 
-      for (var year in selectedYears..sort()) {
-        var yearData;
-        // 선택된 년도 데이터를 가져옴
-          yearData = priceInfo?.actual.years[year];
-          if (yearData != null && yearData.grades.containsKey(grade)) {
-            final gradeData = yearData.grades[grade];
-            currentProductionData[grade]["price"]!.addAll(gradeData?.price);
-            currentProductionData[grade]["date"]!.addAll(gradeData?.date);
-          }
+        // 실제 데이터 처리
+        yearData = priceInfo?.actual.years[year];
+        if (yearData != null && yearData.grades.containsKey(grade)) {
+          final gradeData = yearData.grades[grade];
+
+          currentProductionData[grade]["price"]!.addAll(gradeData?.price);
+
+          final updatedDates = (gradeData?.date as List<dynamic>?)
+              ?.map((date) => '$year-$date')
+              .cast<String>()
+              .toList();
+          currentProductionData[grade]["date"]!.addAll(updatedDates ?? []);
+        }
       }
     }
+
+    // 실제 계절지수 데이터 처리
+    for (var year in sortedYears) {
+      var indexData;
+      indexData = priceInfo?.actual.seasonal[year];
+      if (indexData != null) {
+        seasonalIndex.addAll(indexData);
+      }
+    }
+    seasonalIndexDate = currentProductionData[selectedGrades[0]]["date"];
 
     predProductionData[selectedPredGrades] = {
       "act_price": <double?>[],
@@ -192,9 +289,25 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
             .addAll(gradeData?.actPrice);
         predProductionData[selectedPredGrades]["pred_price"]!
             .addAll(gradeData?.predPrice);
-        predProductionData[selectedPredGrades]["date"]!.addAll(gradeData?.date);
+        final updatedDates = (gradeData?.date as List<dynamic>?)
+            ?.map((date) => '$year-$date')
+            .cast<String>()
+            .toList();
+        predProductionData[selectedPredGrades]["date"]!
+            .addAll(updatedDates ?? []);
       }
     }
+
+    final sortedPredYears = [...selectedPredYears]..sort();
+    // 실제 계절지수 데이터 처리
+    for (var year in sortedPredYears) {
+      var indexData;
+      indexData = priceInfo?.predict.predSeasonal[year];
+      if (indexData != null) {
+        seasonalPredIndex.addAll(indexData);
+      }
+    }
+    predSeasonalIndexDate = predProductionData[selectedPredGrades[0]]["date"];
 
     setState(() {});
   }
@@ -203,7 +316,7 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
   Widget build(BuildContext context) {
     if (isLoading) {
       // 로딩 화면
-      return Center(
+      return const Center(
         child: CircularProgressIndicator(),
       );
     }
@@ -234,26 +347,31 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
                         ? [
                             [
                               '현재가(${actAnalysis?.date})',
-                              '${actAnalysis?.currencyUnit}${actAnalysis?.thisValue}',
-                              ' (kg)',
+                              '${actAnalysis?.currencyUnit}${formatCurrency(actAnalysis?.thisValue)}',
+                              ' (${actAnalysis?.weightUnit})',
                               '직전대비',
-                              '+${actAnalysis?.rateComparedLastValue}%'
+                              formatPositiveValue(
+                                  actAnalysis?.rateComparedLastValue)
                             ],
                             [
                               '전년',
-                              '${actAnalysis?.valueComparedLastYear}',
-                              '${actAnalysis?.diffComparedLastValueYear}(${actAnalysis?.rateComparedLastYear}%)'
+                              formatCurrency(actAnalysis?.lastYearValue),
+                              '${formatArrowIndicator(actAnalysis?.diffComparedLastValueYear)}(${formatPositiveValue(actAnalysis?.rateComparedLastYear)})'
                             ],
                             [
                               '평년',
-                              '${actAnalysis?.valueComparedCommon3Years}',
-                              '${actAnalysis?.diffValueComparedCommon3Years}(${actAnalysis?.rateComparedCommon3Years}%)'
+                              formatCurrency(
+                                  actAnalysis?.valueComparedCommon3Years),
+                              '${formatArrowIndicator(actAnalysis?.diffValueComparedCommon3Years)}(${formatPositiveValue(actAnalysis?.rateComparedCommon3Years)})'
                             ],
                             [
                               '1년 평균가',
-                              '${actAnalysis?.valueComparedCommon3Years}'
+                              formatCurrency(actAnalysis?.yearAverageValue)
                             ],
-                            ['1년 변동가', '${actAnalysis?.yearChangeValue}'],
+                            [
+                              '1년 변동가',
+                              formatCurrency(actAnalysis?.yearChangeValue)
+                            ],
                             ['계절 지수', '${actAnalysis?.seasonalIndex}'],
                             [
                               '공급 안정성 지수',
@@ -307,10 +425,10 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
                     commProductionData: commProductionData,
                     gradeColorMap: gradeColorMap,
                   ),
-                  // SeasonalBarWidget(
-                  //   seasonalIndex: seasonalIndex,
-                  //   selectedYears: selectedYears,
-                  // ),
+                  SeasonalBarWidget(
+                    seasonalIndex: seasonalIndex,
+                    seasonalDate: seasonalIndexDate,
+                  ),
                   const SizedBox(
                     height: 20,
                   ),
@@ -338,14 +456,14 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
                         ? [
                             [
                               '예측가(${predAnalysis?.date})',
-                              '${predAnalysis?.currencyUnit}${predAnalysis?.predictedPrice}',
+                              '${predAnalysis?.currencyUnit}${formatCurrency(predAnalysis?.predictedPrice)}',
                               ' (${predAnalysis?.weightUnit})',
                               '직전대비',
                               '${predAnalysis?.rateComparedLastValue}%'
                             ],
                             [
                               '범위',
-                              '${predAnalysis?.range?[0]} ~ ${predAnalysis?.range?[1]}'
+                              '${formatCurrency(predAnalysis?.range?[0])} ~ ${formatCurrency(predAnalysis?.range?[1])}'
                             ],
                             [
                               '범위 이탈 확률',
@@ -358,7 +476,8 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
                             ['일관성 지수', '${predAnalysis?.consistencyIndex}'],
                             [
                               '계절 보정가',
-                              '${predAnalysis?.seasonallyAdjustedPrice}'
+                              formatCurrency(
+                                  predAnalysis?.seasonallyAdjustedPrice)
                             ],
                             ['신호 지수', '${predAnalysis?.signalIndex}'],
                           ]
@@ -405,18 +524,21 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
                   TrendChart(
                     predProductionData: predProductionData,
                   ),
-                  // SeasonalBarWidget(
-                  //   seasonalIndex: seasonalPredIndex,
-                  //   selectedYears: selectedPredYears,
-                  // ),
+                  SeasonalBarWidget(
+                    seasonalIndex: seasonalPredIndex,
+                    seasonalDate: predSeasonalIndexDate,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: PredTableWidget(
+                      predTableData: predTableData,
+                    ),
+                  ),
                   const SizedBox(
                     height: 20,
                   ),
                 ],
               ),
-            ),
-            const SizedBox(
-              height: 50,
             ),
           ],
         ),

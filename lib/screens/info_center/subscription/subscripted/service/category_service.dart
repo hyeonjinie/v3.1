@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:v3_mvp/screens/info_center/subscription/subscripted/mock_data/subs_mock.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/models/category_model.dart';
 
 class CategoryService {

@@ -42,6 +42,7 @@ class CurrentChart extends StatelessWidget {
           SfCartesianChart(
             primaryXAxis: const CategoryAxis(
               majorGridLines: MajorGridLines(width: 0),
+              labelRotation: -20, 
               labelStyle: TextStyle(
                 color: Color(0xFF666C77),
                 fontSize: 12,

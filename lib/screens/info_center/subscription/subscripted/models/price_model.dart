@@ -1,17 +1,3 @@
-// class PriceProdModel {
-//   final Map<String, CropData> crops;
-
-//   PriceProdModel({required this.crops});
-
-//   factory PriceProdModel.fromJson(Map<String, dynamic> json) {
-//     return PriceProdModel(
-//       crops: (json['crops'] as Map<String, dynamic>).map(
-//         (key, value) => MapEntry(key, CropData.fromJson(value)),
-//       ),
-//     );
-//   }
-// }
-
 class CropData {
   final ActualData actual;
   final PredictData predict;
@@ -29,15 +15,23 @@ class CropData {
 class ActualData {
   final Map<String, YearData> years;
   final Map<String, CommonData> commYears;
+  final Map<String, List<double?>> seasonal;
   final ActAnalysis? actAnalysis;
 
-  ActualData({required this.years, required this.commYears, this.actAnalysis});
+  ActualData(
+      {required this.years,
+      required this.commYears,
+      required this.seasonal,
+      this.actAnalysis});
 
   factory ActualData.fromJson(Map<String, dynamic> json) {
     return ActualData(
       years: Map.fromEntries(
         json.entries
-            .where((entry) => entry.key != 'act_analysis' && entry.key != '평년')
+            .where((entry) =>
+                entry.key != 'act_analysis' &&
+                entry.key != '평년' &&
+                entry.key != 'daily_seasonal_index')
             .map(
                 (entry) => MapEntry(entry.key, YearData.fromJson(entry.value))),
       ),
@@ -45,6 +39,13 @@ class ActualData {
         json.entries.where((entry) => entry.key == '평년').map(
             (entry) => MapEntry(entry.key, CommonData.fromJson(entry.value))),
       ),
+      seasonal: (json['daily_seasonal_index'] as Map<String, dynamic>? ?? {})
+          .map((key, value) => MapEntry(
+                key,
+                (value as List<dynamic>)
+                    .map((item) => (item as num).toDouble())
+                    .toList(),
+              )),
       actAnalysis: json['act_analysis'] != null
           ? ActAnalysis.fromJson(json['act_analysis'])
           : null,
@@ -60,9 +61,8 @@ class CommonData {
   factory CommonData.fromJson(Map<String, dynamic> json) {
     return CommonData(
       commyears: Map.fromEntries(
-        json.entries
-            .map(
-                (entry) => MapEntry(entry.key, YearData.fromJson(entry.value))),
+        json.entries.map(
+            (entry) => MapEntry(entry.key, YearData.fromJson(entry.value))),
       ),
     );
   }
@@ -105,7 +105,8 @@ class ActAnalysis {
   final String date;
   final double? thisValue;
   final double? rateComparedLastValue;
-  final double? valueComparedLastYear;
+  final double? valueComparedYesterday;
+  final double? lastYearValue;
   final double? diffComparedLastValueYear;
   final double? rateComparedLastYear;
   final double? valueComparedCommon3Years;
@@ -116,12 +117,14 @@ class ActAnalysis {
   final double? seasonalIndex;
   final double? supplyStabilityIndex;
   final String currencyUnit;
+  final String weightUnit;
 
   ActAnalysis({
     required this.date,
     this.thisValue,
     this.rateComparedLastValue,
-    this.valueComparedLastYear,
+    this.valueComparedYesterday,
+    this.lastYearValue,
     this.diffComparedLastValueYear,
     this.rateComparedLastYear,
     this.valueComparedCommon3Years,
@@ -132,6 +135,7 @@ class ActAnalysis {
     this.seasonalIndex,
     this.supplyStabilityIndex,
     required this.currencyUnit,
+    required this.weightUnit,
   });
 
   factory ActAnalysis.fromJson(Map<String, dynamic> json) {
@@ -139,7 +143,8 @@ class ActAnalysis {
       date: json['date'] ?? '',
       thisValue: json['this_value']?.toDouble(),
       rateComparedLastValue: json['rate_compared_last_value']?.toDouble(),
-      valueComparedLastYear: json['value_compared_last_year']?.toDouble(),
+      valueComparedYesterday: json['value_compared_yesterday']?.toDouble(),
+      lastYearValue: json['last_year_value']?.toDouble(),
       diffComparedLastValueYear:
           json['diff_compared_last_value_year']?.toDouble(),
       rateComparedLastYear: json['rate_compared_last_year']?.toDouble(),
@@ -153,22 +158,36 @@ class ActAnalysis {
       seasonalIndex: json['seasonal_index']?.toDouble(),
       supplyStabilityIndex: json['supply_stability_index']?.toDouble(),
       currencyUnit: json['currency_unit'] ?? '',
+      weightUnit: json['weight_unit'] ?? '',
     );
   }
 }
 
 class PredictData {
   final Map<String, PredYearData> years;
+  final Map<String, List<double?>> predSeasonal;
   final PredAnalysis? predAnalysis;
 
-  PredictData({required this.years, this.predAnalysis});
+  PredictData(
+      {required this.years, required this.predSeasonal, this.predAnalysis});
 
   factory PredictData.fromJson(Map<String, dynamic> json) {
     return PredictData(
       years: Map.fromEntries(
-        json.entries.where((entry) => entry.key != 'pred_analysis').map(
-            (entry) => MapEntry(entry.key, PredYearData.fromJson(entry.value))),
+        json.entries
+            .where((entry) =>
+                entry.key != 'pred_analysis' &&
+                entry.key != 'pred_seasonal_index')
+            .map((entry) =>
+                MapEntry(entry.key, PredYearData.fromJson(entry.value))),
       ),
+      predSeasonal: (json['pred_seasonal_index'] as Map<String, dynamic>? ?? {})
+          .map((key, value) => MapEntry(
+                key,
+                (value as List<dynamic>)
+                    .map((item) => (item as num).toDouble())
+                    .toList(),
+              )),
       predAnalysis: json['pred_analysis'] != null
           ? PredAnalysis.fromJson(json['pred_analysis'])
           : null,
@@ -194,10 +213,17 @@ class PredYearData {
 class PredGradeData {
   final List<double?> actPrice;
   final List<double?> predPrice;
+  final List<double?> predHPrice;
+  final List<double?> predLPrice;
   final List<String?> date;
 
-  PredGradeData(
-      {required this.actPrice, required this.predPrice, required this.date});
+  PredGradeData({
+    required this.actPrice,
+    required this.predPrice,
+    required this.predHPrice,
+    required this.predLPrice,
+    required this.date,
+  });
 
   factory PredGradeData.fromJson(Map<String, dynamic> json) {
     return PredGradeData(
@@ -205,6 +231,12 @@ class PredGradeData {
           .map((item) => item != null ? (item as num).toDouble() : null)
           .toList(),
       predPrice: (json['pred_price'] as List<dynamic>? ?? [])
+          .map((item) => item != null ? (item as num).toDouble() : null)
+          .toList(),
+      predHPrice: (json['pred_h_price'] as List<dynamic>? ?? [])
+          .map((item) => item != null ? (item as num).toDouble() : null)
+          .toList(),
+      predLPrice: (json['pred_l_price'] as List<dynamic>? ?? [])
           .map((item) => item != null ? (item as num).toDouble() : null)
           .toList(),
       date: (json['date'] as List<dynamic>? ?? [])
