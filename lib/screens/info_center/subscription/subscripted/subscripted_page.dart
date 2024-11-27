@@ -38,10 +38,8 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
   }
 
   Future<void> _updateCategories() async {
-    setState(() {
-      isLoading = true;
-      catIsEmpty = false;
-    });
+    isLoading = true;
+    catIsEmpty = false;
 
     final fetchedCategories =
         await _service.fetchCategories(selectedCategoryType);
@@ -66,10 +64,9 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
 
       // 현재 카테고리 타입을 이전 값으로 업데이트
       previousCategoryType = selectedCategoryType;
-      isLoading = false;
+      selectedCategoryType == '가격' ? _filterProducts() : _filterIndices();
+      
     });
-
-    selectedCategoryType == '가격' ? _filterProducts() : _filterIndices();
   }
 
   // 필터링된 selectedProd 리스트
@@ -89,10 +86,9 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
 
       if (filtered.isNotEmpty) {
         setState(() {
+          print('aaaaa');
+          updateCategory(filtered[0].name, filtered[0].filters);
           selectedProd = filtered;
-          selectedProdName = filtered[0].name;
-          selectedProdDay =
-              int.tryParse(filtered[0].filters['terms']!.substring(2)) ?? 1;
         });
       }
     }
@@ -112,16 +108,38 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
 
       if (filtered.isNotEmpty) {
         setState(() {
+          updateCategory(filtered[0].name, filtered[0].filters);
           selectedProd = filtered;
-          selectedIdxName = filtered[0].name;
-          selectedIdxDay =
-              int.tryParse(filtered[0].filters['terms']!.substring(2)) ?? 1;
-          selectedProdCategory = filtered[0].filters['category']!;
-          selectedProdType = filtered[0].filters['type']!;
-          selectedDetail = filtered[0].filters['detail']!;
         });
       }
     }
+  }
+
+  void updateCategory(String name, Map<String, String> filters) {
+    setState(() {
+      final terms = filters['terms'];
+      if (selectedCategoryType == '지수') {
+        selectedIdxName = name;
+        selectedProdCategory = filters['category']!;
+        selectedProdType = filters['type']!;
+        selectedDetail = filters['detail']!;
+        selectedIdxDay = terms != null && terms.startsWith("D+")
+            ? int.tryParse(terms.substring(2)) ?? 1
+            : 1;
+      } else {
+        selectedProdName = name;
+        selectedProdDay = terms != null && terms.startsWith("D+")
+            ? int.tryParse(terms.substring(2)) ?? 1
+            : 1;
+      }
+      print('------------------Category data >> ');
+      print('selectedIdxName>> ${selectedIdxName}');
+      print('selectedIdxDay>> ${selectedIdxDay}');
+      print('selectedProdCategory>> ${selectedProdCategory}');
+      print('selectedProdType>> ${selectedProdType}');
+      print('selectedDetail>> ${selectedDetail}');
+      isLoading = false;
+    });
   }
 
   Widget _buildGrid<T>({
@@ -186,27 +204,9 @@ class _SubscriptedPageState extends State<SubscriptedPage> {
                         aspectRatio: 1,
                         child: InkWell(
                           onTap: () {
-                            setState(() {
-                              selectedItemIndex = index;
-                              final terms = getFilter(item)['terms'];
-                              if (selectedCategoryType == '지수') {
-                                selectedIdxName = getName(item);
-                                selectedProdCategory =
-                                    getFilter(item)['category']!;
-                                selectedProdType = getFilter(item)['type']!;
-                                selectedDetail = getFilter(item)['detail']!;
-                                selectedIdxDay =
-                                    terms != null && terms.startsWith("D+")
-                                        ? int.tryParse(terms.substring(2)) ?? 1
-                                        : 1;
-                              } else {
-                                selectedProdName = getName(item);
-                                selectedProdDay =
-                                    terms != null && terms.startsWith("D+")
-                                        ? int.tryParse(terms.substring(2)) ?? 1
-                                        : 1;
-                              }
-                            });
+                            selectedItemIndex = index;
+                            updateCategory(
+                                getName(items[index]), getFilter(items[index]));
                           },
                           borderRadius: BorderRadius.circular(4),
                           child: Container(

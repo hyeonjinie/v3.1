@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/models/index_model.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/service/prod_info_service.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/index_curr_chart.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/index_pred.chart.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/pred_curr_chart.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/price_table.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/year_btn.dart';
@@ -52,9 +53,10 @@ class _SubIndexInfoState extends State<SubIndexInfo> {
   };
 
   // 예측
-  // PredAnalysis? predAnalysis;
-  // List<String> availablePredYears = [];
-  // List<String> selectedPredYears = [];
+  PredAnalysis? predAnalysis;
+  List<String> availablePredYears = [];
+  List<String> selectedPredYears = [];
+  Map<String, dynamic> predProductionData = {};
 
   @override
   void initState() {
@@ -64,11 +66,12 @@ class _SubIndexInfoState extends State<SubIndexInfo> {
     selectedProdType = widget.selectedProdType;
     selectedDetail = widget.selectedDetail;
     selectedProductDay = widget.selectedProdDay;
-    // print('selectedIdxName>> ${selectedProduct}');
-    // print('selectedIdxDay>> ${selectedProductDay}');
-    // print('selectedProdCategory>> ${selectedProdCategory}');
-    // print('selectedProdType>> ${selectedProdType}');
-    // print('selectedDetail>> ${selectedDetail}');
+    print('------------------Page data >> ');
+    print('selectedIdxName>> ${selectedProduct}');
+    print('selectedIdxDay>> ${selectedProductDay}');
+    print('selectedProdCategory>> ${selectedProdCategory}');
+    print('selectedProdType>> ${selectedProdType}');
+    print('selectedDetail>> ${selectedDetail}');
     fetchAndPrintPriceInfo();
   }
 
@@ -86,8 +89,8 @@ class _SubIndexInfoState extends State<SubIndexInfo> {
       setState(() {
         availableYears = indexInfo!.actual.years.keys.toList();
         actAnalysis = indexInfo!.actual.actAnalysis!;
-        // availablePredYears = priceInfo!.predict.years.keys.toList();
-        // predAnalysis = priceInfo!.predict.predAnalysis!;
+        availablePredYears = indexInfo!.predict.years.keys.toList();
+        predAnalysis = indexInfo!.predict.predAnalysis!;
         _updateYearColorMap();
         _updateChartData();
         isLoading = false;
@@ -100,7 +103,15 @@ class _SubIndexInfoState extends State<SubIndexInfo> {
     // 선택된 작물 및 옵션의 실제가격 데이터 가져오기
     currentProductionData.clear();
     commProductionData.clear();
+    predProductionData.clear();
     final sortedYears = [...selectedYears]..sort();
+    final sortedPredYears = [...selectedPredYears]..sort();
+    predProductionData = {
+      "act_index": <double?>[],
+      "pred_index": <double?>[],
+      "date": <String?>[],
+    };
+
     for (var year in sortedYears) {
       var yearData;
       // '평년' 처리
@@ -116,7 +127,8 @@ class _SubIndexInfoState extends State<SubIndexInfo> {
               if (!commProductionData.containsKey(ma)) {
                 commProductionData.putIfAbsent(ma, () => []);
               }
-              commProductionData[ma]!.addAll(ma == 'MA30'? yearData?.ma30 : yearData?.ma60);
+              commProductionData[ma]!
+                  .addAll(ma == 'MA30' ? yearData?.ma30 : yearData?.ma60);
             }
           }
           if (!commProductionData.containsKey('date')) {
@@ -131,27 +143,44 @@ class _SubIndexInfoState extends State<SubIndexInfo> {
       }
       yearData = indexInfo?.actual.years[year];
       if (yearData != null) {
-          if (!currentProductionData.containsKey('index')) {
-            currentProductionData.putIfAbsent('index', () => []);
-          }
-          currentProductionData["index"]!.addAll(yearData?.index);
-          if (selectedMa.isNotEmpty) {
-            for (var ma in selectedMa) {
-              if (!currentProductionData.containsKey(ma)) {
-                currentProductionData.putIfAbsent(ma, () => []);
-              }
-              currentProductionData[ma]!.addAll(ma == 'MA30'? yearData?.ma30 : yearData?.ma60);
+        if (!currentProductionData.containsKey('index')) {
+          currentProductionData.putIfAbsent('index', () => []);
+        }
+        currentProductionData["index"]!.addAll(yearData?.index);
+        if (selectedMa.isNotEmpty) {
+          for (var ma in selectedMa) {
+            if (!currentProductionData.containsKey(ma)) {
+              currentProductionData.putIfAbsent(ma, () => []);
             }
+            currentProductionData[ma]!
+                .addAll(ma == 'MA30' ? yearData?.ma30 : yearData?.ma60);
           }
-          if (!currentProductionData.containsKey('date')) {
-            currentProductionData.putIfAbsent('date', () => []);
-          }
-          final updatedDates = (yearData?.date as List<dynamic>?)
+        }
+        if (!currentProductionData.containsKey('date')) {
+          currentProductionData.putIfAbsent('date', () => []);
+        }
+        final updatedDates = (yearData?.date as List<dynamic>?)
+            ?.map((date) => '$year-$date')
+            .cast<String>()
+            .toList();
+        currentProductionData["date"]!.addAll(updatedDates ?? []);
+      }
+
+      for (var year in sortedPredYears) {
+        final actData = indexInfo?.actual.years[year];
+        final yearData = indexInfo?.predict.years[year];
+        if (actData != null) {
+          predProductionData["act_index"]!.addAll(actData.index);
+        }
+        if (yearData != null) {
+          predProductionData["pred_index"]!.addAll(yearData.index);
+          final updatedDates = (yearData.date as List<dynamic>?)
               ?.map((date) => '$year-$date')
               .cast<String>()
               .toList();
-          currentProductionData["date"]!.addAll(updatedDates ?? []);
+          predProductionData["date"]!.addAll(updatedDates ?? []);
         }
+      }
     }
     setState(() {});
   }
@@ -160,7 +189,6 @@ class _SubIndexInfoState extends State<SubIndexInfo> {
   void _updateYearColorMap() {
     yearColorMap.clear(); // 기존 맵 초기화
     availableYears.sort((a, b) => int.parse(b).compareTo(int.parse(a)));
-    print('availableYears>>>${availableYears}');
     availableYears.add('평년');
     selectedYears = [availableYears[0]];
 
@@ -173,17 +201,15 @@ class _SubIndexInfoState extends State<SubIndexInfo> {
       }
     }
 
-    // for (int i = 0; i < availablePredYears.length; i++) {
-    //   String year = availablePredYears[i];
-    //   yearPredColorMap[year] = Color(0xFF0084FF);
-    // }
+    availablePredYears.sort((a, b) => int.parse(b).compareTo(int.parse(a)));
+    selectedPredYears = [availablePredYears[0]];
   }
 
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
       // 로딩 화면
-      return Center(
+      return const Center(
         child: CircularProgressIndicator(),
       );
     }
@@ -290,94 +316,79 @@ class _SubIndexInfoState extends State<SubIndexInfo> {
             Divider(),
             const SizedBox(height: 20),
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              padding: EdgeInsets.all(16.0),
               child: Text(
                 '예측',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
-            // Container(
-            //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            //   color: Colors.white,
-            //   width: double.infinity,
-            //   child: Column(
-            //     crossAxisAlignment: CrossAxisAlignment.start,
-            //     children: [
-            //       PriceTableWidget(
-            //         dataRows: cropPredData['pred_analysis'] != null
-            //             ? [
-            //                 [
-            //                   '예측가(${cropPredData['pred_analysis']['date']})',
-            //                   '${cropPredData['pred_analysis']['predicted_index']}',
-            //                   ' ',
-            //                   '직전대비',
-            //                   formatPositiveValue(cropPredData['pred_analysis']
-            //                       ['rate_compared_last_value'])
-            //                 ],
-            //                 [
-            //                   '범위',
-            //                   '${cropPredData['pred_analysis']['range'][0]} ~ ${cropPredData['pred_analysis']['range'][1]}'
-            //                 ],
-            //                 [
-            //                   '범위 이탈 확률',
-            //                   '${cropPredData['pred_analysis']['out_of_range_probability']}%'
-            //                 ],
-            //                 [
-            //                   '안정 구간 확률',
-            //                   '${cropPredData['pred_analysis']['stability_section_probability']}%'
-            //                 ],
-            //                 [
-            //                   '일관성 지수',
-            //                   '${cropPredData['pred_analysis']['consistency_index']}'
-            //                 ],
-            //                 [
-            //                   '계절 보정가',
-            //                   '${cropPredData['pred_analysis']['resilience_index']}'
-            //                 ],
-            //                 [
-            //                   '신호 지수',
-            //                   '${cropPredData['pred_analysis']['signal_index']}'
-            //                 ],
-            //               ]
-            //             : [
-            //                 ['예측가()', '', '', '직전대비', ''],
-            //                 ['범위', ''],
-            //                 ['범위 이탈 확률', ''],
-            //                 ['안정 구간 확률', ''],
-            //                 ['일관성 지수', ''],
-            //                 ['계절 보정가', ''],
-            //                 ['신호 지수', ''],
-            //               ],
-            //       ),
-            //       YearButtonWidget(
-            //         availableYears: availablePredYears,
-            //         selectedYears: selectedPredYears,
-            //         onYearsChanged: (updatedSelectedYears) {
-            //           setState(() {
-            //             selectedPredYears = updatedSelectedYears;
-            //             _updateChartData();
-            //           });
-            //         },
-            //         yearColorMap: yearPredColorMap,
-            //       ),
-
-            //       const SizedBox(
-            //         height: 10,
-            //       ),
-            //       // TrendChart(
-            //       //   latestPred: predProductionData,
-            //       //   latestActual: predCurrProductionData,
-            //       //   date: date,
-            //       //   actualName: '현재',
-            //       //   predictedName: '예측',
-            //       //   unit: '',
-            //       // ),
-            //       const SizedBox(
-            //         height: 20,
-            //       ),
-            //     ],
-            //   ),
-            // ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              color: Colors.white,
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  PriceTableWidget(
+                    dataRows: predAnalysis != null
+                        ? [
+                            [
+                              '예측가(${predAnalysis?.date})',
+                              '${predAnalysis?.predictedIndex}',
+                              ' ',
+                              '직전대비',
+                              formatPositiveValue(
+                                  predAnalysis?.rateComparedLastValue)
+                            ],
+                            [
+                              '범위',
+                              '${predAnalysis?.range[0]} ~ ${predAnalysis?.range[1]}'
+                            ],
+                            [
+                              '범위 이탈 확률',
+                              '${predAnalysis?.outOfRangeProbability}%'
+                            ],
+                            [
+                              '안정 구간 확률',
+                              '${predAnalysis?.stabilitySectionProbability}%'
+                            ],
+                            ['일관성 지수', '${predAnalysis?.consistencyIndex}'],
+                            ['계절 보정가', '${predAnalysis?.resilienceIndex}'],
+                            ['신호 지수', '${predAnalysis?.signalIndex}'],
+                          ]
+                        : [
+                            ['예측가()', '', '', '직전대비', ''],
+                            ['범위', ''],
+                            ['범위 이탈 확률', ''],
+                            ['안정 구간 확률', ''],
+                            ['일관성 지수', ''],
+                            ['계절 보정가', ''],
+                            ['신호 지수', ''],
+                          ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0, bottom: 0),
+                    child: YearButtonWidget(
+                      availableYears: availablePredYears,
+                      selectedYears: selectedPredYears,
+                      onYearsChanged: (updatedSelectedYears) {
+                        setState(() {
+                          selectedPredYears = updatedSelectedYears;
+                          _updateChartData();
+                        });
+                      },
+                      yearColorMap: yearColorMap,
+                    ),
+                  ),
+                  IndexPredChart(
+                    predProductionData: predProductionData,
+                  ),
+                  const SizedBox(
+                    height: 20,
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(
               height: 50,
             ),
