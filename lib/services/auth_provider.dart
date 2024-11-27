@@ -9,12 +9,49 @@ class AuthProviderService with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   CustomUser? _customUser;
+  String? _currentToken;
 
   AuthProviderService() {
     _auth.authStateChanges().listen(_onAuthStateChanged);
+    _initializeToken();
   }
 
   CustomUser? get user => _customUser;
+  String? get currentToken => _currentToken;
+
+  Future<void> _initializeToken() async {
+    if (_auth.currentUser != null) {
+      await refreshToken();
+    }
+  }
+
+  Future<String?> getCurrentUserToken() async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        String? token = await user.getIdToken();
+        return token;
+      }
+      return null;
+    } catch (e) {
+      print('토큰 가져오기 실패: $e');
+      return null;
+    }
+  }
+
+
+
+  Future<String?> refreshToken() async {
+    try {
+      final token = await _auth.currentUser?.getIdToken(true);
+      _currentToken = token;
+      notifyListeners();
+      return token;
+    } catch (e) {
+      print('Token refresh failed: $e');
+      return null;
+    }
+  }
 
   Stream<CustomUser?> get userChanges {
     return _auth.authStateChanges().map((User? user) {
@@ -29,8 +66,10 @@ class AuthProviderService with ChangeNotifier {
     if (firebaseUser != null) {
       var userDoc = await _firestore.collection('client').doc(firebaseUser.uid).get();
       _customUser = CustomUser.fromDocument(userDoc);
+      await refreshToken();
     } else {
       _customUser = null;
+      _currentToken = null;
     }
     notifyListeners();
   }
@@ -38,6 +77,7 @@ class AuthProviderService with ChangeNotifier {
   Future<void> setUserAfterRegistration(User user) async {
     var userDoc = await _firestore.collection('client').doc(user.uid).get();
     _customUser = CustomUser.fromDocument(userDoc);
+    await refreshToken();
     notifyListeners();
   }
 
@@ -47,19 +87,28 @@ class AuthProviderService with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> signInWithEmailAndPassword(String email, String password) async {
+  Future<String?> signInWithEmailAndPassword(String email, String password) async {
     try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      final credential = await _auth.signInWithEmailAndPassword(
+          email: email,
+          password: password
+      );
+      final token = await credential.user?.getIdToken();
+      _currentToken = token;
+      notifyListeners();
+      return token;
     } catch (e) {
       print(e);
       notifyListeners();
+      return null;
     }
   }
 
   Future<void> signOut(BuildContext context) async {
     await _auth.signOut();
     _customUser = null;
+    _currentToken = null;
     notifyListeners();
-    Future.microtask(() => context.go('/'));  // Navigate to home after signing out
+    Future.microtask(() => context.go('/'));
   }
 }
