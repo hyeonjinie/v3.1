@@ -19,6 +19,8 @@ import 'package:v3_mvp/screens/info_center/bpi_detail/bpi_screen.dart';
 import 'package:v3_mvp/screens/info_center/bpi_detail/widget/bpi_detail_screen.dart';
 import 'package:v3_mvp/screens/info_center/info_center_screen.dart';
 import 'package:v3_mvp/screens/info_center/item_detail/sd_price_detail_screen.dart';
+import 'package:v3_mvp/screens/info_center/subscription/new_subscription/new_subscription.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/subscripted_page.dart';
 import 'package:v3_mvp/screens/main/main_contents_screen.dart';
 
 import 'package:v3_mvp/screens/order/cart/cart_page.dart';
@@ -232,6 +234,14 @@ class MyAppWithRouter extends StatelessWidget {
           final String documentId = extra['documentId'];
           return OrderProgressPage(order: order, documentId: documentId);
         },
+      ),
+      GoRoute(
+        path: '/subscription',
+        builder: (context, state) => const SubscriptionPage(),
+      ),
+      GoRoute(
+        path: '/subscripted',
+        builder: (context, state) => const SubscriptedPage(),
       ),
     ],
   );

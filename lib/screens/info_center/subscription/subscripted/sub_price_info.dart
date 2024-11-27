@@ -1,15 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:v3_mvp/screens/info_center/subscription/subscripted/mock_data/price_mock.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/models/price_model.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/service/prod_info_service.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/current_chart.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/grade_btn.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/pred_curr_chart.dart';
+import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/pred_table.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/price_table.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/seasonal_bar.dart';
 import 'package:v3_mvp/screens/info_center/subscription/subscripted/widget/year_btn.dart';
-import 'package:v3_mvp/widgets/font_size_helper/font_size_helper.dart';
+import 'package:v3_mvp/screens/utils/number_formatter.dart';
+import 'package:v3_mvp/screens/utils/positive_negative_formatter.dart';
 
 class SubsInfoPage extends StatefulWidget {
-  const SubsInfoPage({Key? key}) : super(key: key);
+  final String selectedProdName;
+  final int selectedProdDay;
+  final String selectedInfomation;
+
+  const SubsInfoPage({
+    Key? key,
+    required this.selectedProdName,
+    required this.selectedProdDay,
+    required this.selectedInfomation,
+  }) : super(key: key);
 
   @override
   State<SubsInfoPage> createState() => _SubsInfoPageState();
@@ -17,148 +29,119 @@ class SubsInfoPage extends StatefulWidget {
 
 class _SubsInfoPageState extends State<SubsInfoPage> {
   //공통
-  Map<String, dynamic> priceMockupData = priceMockData;
-  String selectedProduct = "들깨";
-  String selectedPriceType = "해외";
-  String priceCategory = "수출가격";
-  bool isContinuousView = false; //그래프 이어서 보기
+  final PriceService _priceService = PriceService();
+  late CropData? priceInfo;
+  late String selectedProduct;
+  late int selectedProductDay;
+  bool isLoading = true;
 
   // 분석
-  Map<String, dynamic> cropData = {}; // 선택된 작물 및 옵션의 실제가격 데이터
-  Map<String, List<double>> currentProductionData = {}; //선택한 년도에 대한 분석데이터
-  List<double> seasonalIndex = []; //선택한 년도에 대한 계절데이터
-  Map<String, Color> yearColorMap = {}; //생성된 년도에 따른 컬러 매핑
-  List<String> availableYears = []; // 생성해야 하는 연도 버튼
+  ActAnalysis? actAnalysis;
+  List<String> availableYears = [];
   List<String> selectedYears = [];
   List<String> availableGrades = [];
   List<String> selectedGrades = [];
-  Map<String, Color> gradeColorMap = {}; //생성된 등급에 따른 컬러 매핑
+  Map<String, dynamic> currentProductionData = {}; //선택한 년도에 대한 분석데이터
+  Map<String, dynamic> commProductionData = {}; //선택한 년도에 대한 평년데이터
+  List<double> seasonalIndex = []; //선택한 년도에 대한 계절데이터
+  List<String?> seasonalIndexDate = [];
+  Map<String, Color> yearColorMap = {};
+  Map<String, Color> gradeColorMap = {};
 
   // 예측
-  Map<String, dynamic> cropPredData = {};
-  List<double> predCurrProductionData = [];
-  List<double> predProductionData = [];
-  List<String> date = [];
-  List<double> seasonalPredIndex = [];
+  PredAnalysis? predAnalysis;
   List<String> availablePredYears = [];
   List<String> selectedPredYears = [];
-  Map<String, Color> yearPredColorMap = {};
   List<String> availablePredGrades = [];
-  String selectedPredGrades = '해당없음';
+  String selectedPredGrades = '';
+  Map<String, dynamic> predProductionData = {}; //선택한 년도에 대한 예측데이터
+  List<double> seasonalPredIndex = []; //선택한 년도에 대한 계절 예측데이터
+  List<String?> predSeasonalIndexDate = [];
+  Map<String, Color> yearPredColorMap = {};
+  Map<String, dynamic> predTableData = {};
 
   @override
   void initState() {
     super.initState();
-    _updateYearColorMap();
-    _updateGradeColorMap();
-    _updateChartData();
+    selectedProduct = widget.selectedProdName;
+    selectedProductDay = widget.selectedProdDay;
+    fetchAndPrintPriceInfo();
   }
 
-  // chart data 추출
-  void _updateChartData() {
-    // 선택된 작물 및 옵션의 실제가격 데이터 가져오기
-    cropData = priceMockupData['selectedCrops'][selectedProduct]['prices']
-        [selectedPriceType][priceCategory]['실제가격'];
-    cropPredData = priceMockupData['selectedCrops'][selectedProduct]['prices']
-        [selectedPriceType][priceCategory]['예측가격'];
+  void fetchAndPrintPriceInfo() async {
+    try {
+      priceInfo =
+          await _priceService.getPriceData(selectedProduct, selectedProductDay);
+    } catch (e) {
+      print('Error fetching price data: $e');
+    } finally {
+      setState(() {
+        // 분석
+        availableYears = priceInfo!.actual.years.keys.toList();
+        availableGrades =
+            priceInfo!.actual.years[availableYears[0]]!.grades.keys.toList();
+        selectedGrades = [availableGrades[0]];
+        actAnalysis = priceInfo!.actual.actAnalysis!;
+        // // 예측
+        availablePredYears = priceInfo!.predict.years.keys.toList();
+        availablePredGrades = priceInfo!
+            .predict.years[availablePredYears[0]]!.grades.keys
+            .toList();
+        selectedPredGrades = availablePredGrades[0];
+        predAnalysis = priceInfo!.predict.predAnalysis!;
 
-// 선택된 연도들의 데이터 가져오기
-    currentProductionData = {
-      for (var grade in selectedGrades)
-        grade: [
-          for (var year in (selectedYears..sort()))
-            if (year != '평년')
-              ...List<double>.from((cropData[year][grade] ?? [])
-                  .where((data) => data != null)
-                  .map((data) => data!.toDouble()))
-        ]
+        _updateYearColorMap();
+        _updateGradeColorMap();
+        _updateChartData();
+        _predPriceData();
+        isLoading = false;
+      });
+    }
+  }
+
+  // 예측 테이블 처리
+  void _predPriceData() {
+  for (var grade in availableGrades) {
+    // 각 등급에 대해 초기화
+    predTableData[grade] = {
+      "pred_price": <double?>[],
+      "pred_h_price": <double?>[],
+      "pred_l_price": <double?>[],
     };
 
-    // 평년 데이터 처리
-    if (selectedYears.contains('평년')) {
-      currentProductionData['평년'] = [
-        for (var year in selectedYears.where((y) => y != '평년').toList()..sort())
-          if (cropData['평년'].containsKey(year))
-            ...List<double>.from((cropData['평년'][year] ?? [])
-                .where((data) => data != null)
-                .map((data) => data!.toDouble()))
-          else
-            ...List<double>.filled(12, 0.0) // 빈 값으로 채우기
-      ];
-    }
+    // 해당 연도 데이터 가져오기
+    final yearData = priceInfo?.predict.years[availablePredYears[0]];
+    if (yearData != null && yearData.grades.containsKey(grade)) {
+      final gradeData = yearData.grades[grade];
+      if (gradeData != null) {
+        final predPriceList = gradeData.predPrice ?? [];
+        final last15PredPrice = predPriceList.length > selectedProductDay
+            ? predPriceList.sublist(predPriceList.length - selectedProductDay)
+            : predPriceList;
 
-    predProductionData = [
-      for (var year in selectedPredYears..sort())
-        ...List<double>.from((cropPredData[year][selectedPredGrades] ?? [])
-            .where((data) => data != null)
-            .map((data) => data!.toDouble()))
-    ];
-    predCurrProductionData = [
-      for (var year in selectedPredYears..sort())
-        if (year != '평년')
-          ...List<double>.from((cropData[year][selectedPredGrades] ?? [])
-              .where((data) => data != null)
-              .map((data) => data!.toDouble()))
-    ];
-    int yearIndex = 0;
-    int month = 1;
-    date.clear();
+        predTableData[grade]!["pred_price"]!.addAll(last15PredPrice);
 
-    for (int i = 0; i < predProductionData.length; i++) {
-      date.add(
-          '${selectedPredYears[yearIndex].substring(2)}.${month.toString().padLeft(2, '0')}');
-      month++;
-      if (month > 12) {
-        month = 1;
-        yearIndex++;
-        if (yearIndex >= selectedPredYears.length) {
-          yearIndex = 0;
-        }
+        final predHPriceList = gradeData.predHPrice ?? [];
+        final last15PredHPrice = predHPriceList.length > selectedProductDay
+            ? predHPriceList.sublist(predHPriceList.length - selectedProductDay)
+            : predHPriceList;
+
+        predTableData[grade]!["pred_h_price"]!.addAll(last15PredHPrice);
+
+        final predLPriceList = gradeData.predLPrice ?? [];
+        final last15PredLPrice = predLPriceList.length > selectedProductDay
+            ? predLPriceList.sublist(predLPriceList.length - selectedProductDay)
+            : predLPriceList;
+
+        predTableData[grade]!["pred_l_price"]!.addAll(last15PredLPrice);
       }
     }
-    date.sort((a, b) {
-      int yearA = int.parse(a.split('.')[0]);
-      int monthA = int.parse(a.split('.')[1]);
-      int yearB = int.parse(b.split('.')[0]);
-      int monthB = int.parse(b.split('.')[1]);
-
-      if (yearA == yearB) {
-        return monthA.compareTo(monthB);
-      } else {
-        return yearA.compareTo(yearB);
-      }
-    });
-
-    // 계절지수 설정하기
-    seasonalIndex = [
-      for (var year in selectedYears..sort())
-        if (year != '평년')
-          ...List<double>.from((cropData['monthly_seasonal_index'][year] ?? [])
-              .where((data) => data != null)
-              .map((data) => data!.toDouble()))
-    ];
-    seasonalPredIndex = [
-      for (var year in selectedPredYears..sort())
-        ...List<double>.from(
-            (cropPredData['monthly_seasonal_index'][year] ?? [])
-                .where((data) => data != null)
-                .map((data) => data!.toDouble()))
-    ];
-
-    setState(() {});
   }
+}
 
   // 연도 버튼 컬러 매핑
   void _updateYearColorMap() {
     yearColorMap.clear(); // 기존 맵 초기화
-    availableYears = priceMockupData['selectedCrops'][selectedProduct]['prices']
-            [selectedPriceType][priceCategory]['실제가격']
-        .keys
-        .where((year) =>
-            year != 'act_analysis' &&
-            year != '평년' &&
-            year != 'monthly_seasonal_index')
-        .toList();
     availableYears.sort((a, b) => int.parse(b).compareTo(int.parse(a)));
     availableYears.add('평년');
     selectedYears = [availableYears[0]];
@@ -172,76 +155,184 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
       }
     }
 
-    availablePredYears = priceMockupData['selectedCrops'][selectedProduct]
-            ['prices'][selectedPriceType][priceCategory]['예측가격']
-        .keys
-        .where((year) =>
-            year != 'pred_analysis' && year != 'monthly_seasonal_index')
-        .toList();
     availablePredYears.sort((a, b) => int.parse(b).compareTo(int.parse(a)));
     selectedPredYears = [availablePredYears[0]];
 
     for (int i = 0; i < availablePredYears.length; i++) {
       String year = availablePredYears[i];
-      if (year == '평년') {
-        yearPredColorMap[year] = const Color(0xFF78B060);
-      } else {
-        yearPredColorMap[year] = const Color(0xFF0084FF);
-      }
+      yearPredColorMap[year] = const Color(0xFF0084FF);
     }
   }
 
   // 등급 버튼 컬러 매핑
   void _updateGradeColorMap() {
     gradeColorMap.clear(); // 기존 맵 초기화
-    availableGrades = priceMockupData['selectedCrops'][selectedProduct]
-                ['prices'][selectedPriceType][priceCategory]['실제가격']
-            [availableYears[0]]
-        .keys
-        .toList();
-    selectedGrades = ['해당없음'];
     for (String grade in availableGrades) {
       switch (grade) {
         case '특':
-          gradeColorMap[grade] = const Color(0xFFEB5C5C); // 특
+          gradeColorMap[grade] = const Color(0xFF0084FF); // 특
           break;
         case '상':
           gradeColorMap[grade] = const Color(0xFFFF9500); // 상
           break;
-        case '중':
-          gradeColorMap[grade] = const Color(0xFFF8D32D); // 중
+        case '보통':
+          gradeColorMap[grade] = const Color(0xFF78B060); // 중
           break;
         case '하':
           gradeColorMap[grade] = const Color(0xFF9568EE); // 하
           break;
         case '등급외':
-          gradeColorMap[grade] = const Color(0xFFEE68C4); // 등급외
+          gradeColorMap[grade] = const Color(0xFFEB5C5C); // 등급외
           break;
         case '해당없음':
-          gradeColorMap[grade] = const Color(0xFF0084FF); // 해당없음
+          gradeColorMap[grade] = const Color(0xFFEE68C4); // 해당없음
           break;
         default:
           gradeColorMap[grade] = Colors.grey; // 지정되지 않은 경우 기본 색상
       }
     }
-    availablePredGrades = priceMockupData['selectedCrops'][selectedProduct]
-                ['prices'][selectedPriceType][priceCategory]['예측가격']
-            [availableYears[0]]
-        .keys
-        .toList();
+  }
+
+  // chart data 추출
+  void _updateChartData() {
+    currentProductionData.clear();
+    commProductionData.clear();
+    predProductionData.clear();
+    seasonalIndex.clear();
+    seasonalIndexDate.clear();
+    seasonalPredIndex.clear();
+    predSeasonalIndexDate.clear();
+    final sortedYears = [...selectedYears]..sort();
+
+    for (var grade in selectedGrades) {
+      // 선택된 등급별로 초기화
+      currentProductionData[grade] = {
+        "price": <double?>[],
+        "date": <String?>[],
+      };
+      commProductionData[grade] = {
+        "price": <double?>[],
+        "date": <String?>[],
+      };
+
+      for (var year in sortedYears) {
+        var yearData;
+        // '평년' 처리
+        if (selectedYears.contains('평년')) {
+          yearData = priceInfo?.actual.commYears['평년']?.commyears[year];
+          if (yearData != null && yearData.grades.containsKey(grade)) {
+            final gradeData = yearData.grades[grade];
+
+            // '평년' 데이터 처리
+            commProductionData[grade]["price"]!.addAll(gradeData?.price);
+
+            final updatedDates = gradeData?.date
+                .map((date) => '$year-$date')
+                .cast<String>()
+                .toList();
+            commProductionData[grade]["date"]!.addAll(updatedDates ?? []);
+          } else {
+            // yearData가 null인 경우, 실제 데이터에서 date를 가져옴
+            final actualYearData = priceInfo?.actual.years[year];
+            if (actualYearData != null &&
+                actualYearData.grades.containsKey(grade)) {
+              final actualGradeData = actualYearData.grades[grade];
+
+              final updatedDates = actualGradeData?.date
+                  .map((date) => '$year-$date')
+                  .cast<String>()
+                  .toList();
+              commProductionData[grade]["date"]!.addAll(updatedDates ?? []);
+
+              // date 길이만큼 price에 0을 추가
+              final zeroPrices = List.filled(updatedDates?.length ?? 0, 0.0);
+              commProductionData[grade]["price"]!.addAll(zeroPrices);
+            }
+          }
+        }
+
+        // 실제 데이터 처리
+        yearData = priceInfo?.actual.years[year];
+        if (yearData != null && yearData.grades.containsKey(grade)) {
+          final gradeData = yearData.grades[grade];
+
+          currentProductionData[grade]["price"]!.addAll(gradeData?.price);
+
+          final updatedDates = (gradeData?.date as List<dynamic>?)
+              ?.map((date) => '$year-$date')
+              .cast<String>()
+              .toList();
+          currentProductionData[grade]["date"]!.addAll(updatedDates ?? []);
+        }
+      }
+    }
+
+    // 실제 계절지수 데이터 처리
+    for (var year in sortedYears) {
+      var indexData;
+      indexData = priceInfo?.actual.seasonal[year];
+      if (indexData != null) {
+        seasonalIndex.addAll(indexData);
+      }
+    }
+    seasonalIndexDate = currentProductionData[selectedGrades[0]]["date"];
+
+    // 예측 
+    predProductionData[selectedPredGrades] = {
+      "act_price": <double?>[],
+      "pred_price": <double?>[],
+      "date": <String?>[],
+    };
+
+    for (var year in selectedPredYears..sort()) {
+      final yearData = priceInfo?.predict.years[year];
+      if (yearData != null && yearData.grades.containsKey(selectedPredGrades)) {
+        final gradeData = yearData.grades[selectedPredGrades];
+        predProductionData[selectedPredGrades]["act_price"]!
+            .addAll(gradeData?.actPrice);
+        predProductionData[selectedPredGrades]["pred_price"]!
+            .addAll(gradeData?.predPrice);
+        final updatedDates = (gradeData?.date as List<dynamic>?)
+            ?.map((date) => '$year-$date')
+            .cast<String>()
+            .toList();
+        predProductionData[selectedPredGrades]["date"]!
+            .addAll(updatedDates ?? []);
+      }
+    }
+
+    final sortedPredYears = [...selectedPredYears]..sort();
+    // 실제 계절지수 데이터 처리
+    for (var year in sortedPredYears) {
+      var indexData;
+      indexData = priceInfo?.predict.predSeasonal[year];
+      if (indexData != null) {
+        seasonalPredIndex.addAll(indexData);
+      }
+    }
+    predSeasonalIndexDate = predProductionData[selectedPredGrades[0]]["date"];
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    final bool showPrediction = widget.selectedInfomation == "예측";  
+
     return Container(
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              padding: EdgeInsets.all(16.0),
               child: Text(
                 '분석',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -255,15 +346,40 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   PriceTableWidget(
-                    dataRows: cropData['act_analysis'] != null
+                    dataRows: actAnalysis != null
                         ? [
-                            ['현재가()', '￦1,100', ' (ton)', '직전대비', '+3%'],
-                            ['전년', '1,050', '▲100(+0.4%)'],
-                            ['평년', '1,050', '▲100(+0.4%)'],
-                            ['1년 평균가', '1,450'],
-                            ['1년 변동가', '1,450'],
-                            ['계절 지수', '1.08'],
-                            ['공급 안정성 지수', '13.25'],
+                            [
+                              '현재가(${actAnalysis?.date})',
+                              '${actAnalysis?.currencyUnit}${formatCurrency(actAnalysis?.thisValue)}',
+                              ' (${actAnalysis?.weightUnit})',
+                              '직전대비',
+                              formatPositiveValue(
+                                  actAnalysis?.rateComparedLastValue)
+                            ],
+                            [
+                              '전년',
+                              formatCurrency(actAnalysis?.lastYearValue),
+                              '${formatArrowIndicator(actAnalysis?.diffComparedLastValueYear)}(${formatPositiveValue(actAnalysis?.rateComparedLastYear)})'
+                            ],
+                            [
+                              '평년',
+                              formatCurrency(
+                                  actAnalysis?.valueComparedCommon3Years),
+                              '${formatArrowIndicator(actAnalysis?.diffValueComparedCommon3Years)}(${formatPositiveValue(actAnalysis?.rateComparedCommon3Years)})'
+                            ],
+                            [
+                              '1년 평균가',
+                              formatCurrency(actAnalysis?.yearAverageValue)
+                            ],
+                            [
+                              '1년 변동가',
+                              formatCurrency(actAnalysis?.yearChangeValue)
+                            ],
+                            ['계절 지수', '${actAnalysis?.seasonalIndex}'],
+                            [
+                              '공급 안정성 지수',
+                              '${actAnalysis?.supplyStabilityIndex}'
+                            ],
                           ]
                         : [
                             ['현재가()', '', '', '직전대비', ''],
@@ -275,47 +391,46 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
                             ['공급 안정성 지수', ''],
                           ],
                   ),
-                  YearButtonWidget(
-                    availableYears: availableYears,
-                    selectedYears: selectedYears,
-                    onYearsChanged: (updatedSelectedYears) {
-                      setState(() {
-                        selectedYears = updatedSelectedYears;
-                        _updateChartData();
-                      });
-                    },
-                    yearColorMap: yearColorMap,
+                  const SizedBox(
+                    height: 16,
                   ),
-                  YearButtonWidget(
-                    availableYears: availableGrades,
-                    selectedYears: selectedGrades,
-                    onYearsChanged: (updatedSelectedYears) {
-                      setState(() {
-                        selectedGrades = updatedSelectedYears;
-                        _updateChartData();
-                      });
-                    },
-                    yearColorMap: gradeColorMap,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: YearButtonWidget(
+                      availableYears: availableYears,
+                      selectedYears: selectedYears,
+                      onYearsChanged: (updatedSelectedYears) {
+                        setState(() {
+                          selectedYears = updatedSelectedYears;
+                          _updateChartData();
+                        });
+                      },
+                      yearColorMap: yearColorMap,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: YearButtonWidget(
+                      availableYears: availableGrades,
+                      selectedYears: selectedGrades,
+                      onYearsChanged: (updatedSelectedYears) {
+                        setState(() {
+                          selectedGrades = updatedSelectedYears;
+                          _updateChartData();
+                        });
+                      },
+                      yearColorMap: gradeColorMap,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   CurrentChart(
-                    selectedGrades: selectedGrades,
-                    selectedYears: selectedYears,
                     currentProductionData: currentProductionData,
-                    onToggleView: (bool newValue) {
-                      setState(() {
-                        isContinuousView = newValue;
-                      });
-                    },
+                    commProductionData: commProductionData,
                     gradeColorMap: gradeColorMap,
-                    unit: cropData['act_analysis'] != null
-                        ? '(${cropData['act_analysis']['currency_unit']})'
-                        : '',
-                    hoverText: 'point.x: point.y',
                   ),
                   SeasonalBarWidget(
                     seasonalIndex: seasonalIndex,
-                    selectedYears: selectedYears,
+                    seasonalDate: seasonalIndexDate,
                   ),
                   const SizedBox(
                     height: 20,
@@ -325,86 +440,111 @@ class _SubsInfoPageState extends State<SubsInfoPage> {
             ),
             const Divider(),
             const SizedBox(height: 20),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Text(
-                '예측',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            if (showPrediction) ...[  
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  '예측',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              color: Colors.white,
-              width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  PriceTableWidget(
-                    dataRows: cropPredData['pred_analysis'] != null
-                        ? [
-                            ['예측가()', '', '', '직전대비', ''],
-                            ['범위', ' ~ '],
-                            ['범위 이탈 확률', '%'],
-                            ['안정 구간 확률', '%'],
-                            ['일관성 지수', ''],
-                            ['계절 보정가', ''],
-                            ['신호 지수', ''],
-                          ]
-                        : [
-                            ['예측가()', '', '', '직전대비', ''],
-                            ['범위', ''],
-                            ['범위 이탈 확률', ''],
-                            ['안정 구간 확률', ''],
-                            ['일관성 지수', ''],
-                            ['계절 보정가', ''],
-                            ['신호 지수', ''],
-                          ],
-                  ),
-                  YearButtonWidget(
-                    availableYears: availablePredYears,
-                    selectedYears: selectedPredYears,
-                    onYearsChanged: (updatedSelectedYears) {
-                      setState(() {
-                        selectedPredYears = updatedSelectedYears;
-                        _updateChartData();
-                      });
-                    },
-                    yearColorMap: yearPredColorMap,
-                  ),
-                  GradeButtonWidget(
-                    onGradeChanged: (newSelectedForecast) {
-                      setState(() {
-                        selectedPredGrades = newSelectedForecast;
-                        _updateChartData();
-                      });
-                    },
-                    btnNames: availablePredGrades,
-                    selectedBtn: selectedPredGrades,
-                  ),
-                  const SizedBox(
-                    height: 10,
-                  ),
-                  TrendChart(
-                    latestPred: predProductionData,
-                    latestActual: predCurrProductionData,
-                    date: date,
-                    actualName: '현재가격',
-                    predictedName: '예측가격',
-                    unit: '',
-                  ),
-                  SeasonalBarWidget(
-                    seasonalIndex: seasonalPredIndex,
-                    selectedYears: selectedPredYears,
-                  ),
-                  const SizedBox(
-                    height: 20,
-                  ),
-                ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                color: Colors.white,
+                width: double.infinity,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PriceTableWidget(
+                      dataRows: predAnalysis != null
+                          ? [
+                              [
+                                '예측가(${predAnalysis?.date})',
+                                '${predAnalysis?.currencyUnit}${formatCurrency(predAnalysis?.predictedPrice)}',
+                                ' (${predAnalysis?.weightUnit})',
+                                '직전대비',
+                                '${predAnalysis?.rateComparedLastValue}%'
+                              ],
+                              [
+                                '범위',
+                                '${formatCurrency(predAnalysis?.range?[0])} ~ ${formatCurrency(predAnalysis?.range?[1])}'
+                              ],
+                              [
+                                '범위 이탈 확률',
+                                '${predAnalysis?.outOfRangeProbability}%'
+                              ],
+                              [
+                                '안정 구간 확률',
+                                '${predAnalysis?.stabilitySectionProbability}%'
+                              ],
+                              ['일관성 지수', '${predAnalysis?.consistencyIndex}'],
+                              [
+                                '계절 보정가',
+                                formatCurrency(
+                                    predAnalysis?.seasonallyAdjustedPrice)
+                              ],
+                              ['신호 지수', '${predAnalysis?.signalIndex}'],
+                            ]
+                          : [
+                              ['예측가()', '', '', '직전대비', ''],
+                              ['범위', ''],
+                              ['범위 이탈 확률', ''],
+                              ['안정 구간 확률', ''],
+                              ['일관성 지수', ''],
+                              ['계절 보정가', ''],
+                              ['신호 지수', ''],
+                            ],
+                    ),
+                    const SizedBox(
+                      height: 16,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: YearButtonWidget(
+                        availableYears: availablePredYears,
+                        selectedYears: selectedPredYears,
+                        onYearsChanged: (updatedSelectedYears) {
+                          setState(() {
+                            selectedPredYears = updatedSelectedYears;
+                            _updateChartData();
+                          });
+                        },
+                        yearColorMap: yearPredColorMap,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: GradeButtonWidget(
+                        onGradeChanged: (newSelectedForecast) {
+                          setState(() {
+                            selectedPredGrades = newSelectedForecast;
+                            _updateChartData();
+                          });
+                        },
+                        btnNames: availablePredGrades,
+                        selectedBtn: selectedPredGrades,
+                      ),
+                    ),
+                    TrendChart(
+                      predProductionData: predProductionData,
+                    ),
+                    SeasonalBarWidget(
+                      seasonalIndex: seasonalPredIndex,
+                      seasonalDate: predSeasonalIndexDate,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: PredTableWidget(
+                        predTableData: predTableData,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 20,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(
-              height: 50,
-            ),
+            ],
           ],
         ),
       ),

@@ -6,12 +6,14 @@ class Index {
   final List<int> price;
   final String? imgUrl;
   final IndexFilters filters;
+  final String? information;
 
   Index({
     required this.name,
     required this.price,
     this.imgUrl,
-    required this.filters
+    required this.filters,
+    this.information,
   });
 
   factory Index.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class Index {
       price: List<int>.from(json['price'].map((x) => x as int)),
       imgUrl: json['img_url'] as String?,
       filters: IndexFilters.fromJson(json['filters'] as Map<String, dynamic>),
+      information: json['information'] as String?,
     );
   }
 
@@ -29,6 +32,7 @@ class Index {
       'price': price.map((p) => p.toString()).toList(),
       'img_url': imgUrl,
       'filters': filters.toJson(),
+      'information': information,
     };
   }
 }

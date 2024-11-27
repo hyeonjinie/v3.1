@@ -1,30 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
-class TrendChart extends StatelessWidget {
+class IndexPredChart extends StatelessWidget {
   final Map<String, dynamic> predProductionData;
 
-  TrendChart({required this.predProductionData});
+  IndexPredChart({required this.predProductionData});
 
   @override
   Widget build(BuildContext context) {
-    final predData = predProductionData.values.first;
 
     // 날짜, 실제 가격, 예측 가격
-    final List<String> date = List<String>.from(predData['date']);
-    final List<dynamic> actualPrice = List<dynamic>.from(predData['act_price']);
-    final List<dynamic> predictedPrice =
-        List<dynamic>.from(predData['pred_price']);
+    final List<String> date = List<String>.from(predProductionData['date']);
+    final List<dynamic> actualIndex = List<dynamic>.from(predProductionData['act_index']);
+    final List<dynamic> predictedIndex =
+        List<dynamic>.from(predProductionData['pred_index']);
 
     // ChartData로 변환
     List<ChartData> actualData = List.generate(
-      actualPrice.length,
-      (index) => ChartData(date[index], actualPrice[index]),
+      actualIndex.length,
+      (index) => ChartData(date[index], actualIndex[index]),
     );
 
     List<ChartData> predDataList = List.generate(
       date.length,
-      (index) => ChartData(date[index], predictedPrice[index]),
+      (index) => ChartData(date[index], predictedIndex[index]),
     );
 
     final TooltipBehavior tooltipBehavior = TooltipBehavior(enable: true);

@@ -29,11 +29,11 @@ class _YearButtonWidgetState extends State<YearButtonWidget> {
           final isSelected = widget.selectedYears.contains(year);
           final yearColor =
               widget.yearColorMap[year] ?? const Color(0xFFE1E1E1);
-          btnWidth = year.length < 2 ? 50 : 70;
+          btnWidth = 70;
 
           return Padding(
             padding:
-                EdgeInsets.symmetric(horizontal: year.length < 2 ? 3.0 : 5.0, vertical: 5.0),
+                EdgeInsets.all(5.0),
             child: ElevatedButton(
                 onPressed: () {
                   setState(() {

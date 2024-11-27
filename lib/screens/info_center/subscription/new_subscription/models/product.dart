@@ -5,14 +5,21 @@ class Product {
   final String name;
   final List<int> price;
   final ProductFilters filters;
+  final String information;
 
-  Product({required this.name, required this.price, required this.filters});
+  Product({
+    required this.name,
+    required this.price,
+    required this.filters,
+    required this.information,
+  });
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
-      name: json['name'],
+      name: json['name'] as String,
       price: List<int>.from(json['price'].map((x) => x as int)),
-      filters: ProductFilters.fromJson(json['filters']),
+      filters: ProductFilters.fromJson(json['filters'] as Map<String, dynamic>),
+      information: json['information'] as String,
     );
   }
 
@@ -21,6 +28,7 @@ class Product {
       'name': name,
       'price': price.map((p) => p.toString()).toList(),
       'filters': filters.toJson(),
+      'information': information,
     };
   }
 }
@@ -41,19 +49,13 @@ class ProductFilters {
   });
 
   factory ProductFilters.fromJson(Map<String, dynamic> json) {
-    print('Parsing ProductFilters from JSON: $json');  
-    try {
-      return ProductFilters(
-        terms: List<String>.from(json['terms']),
-        markets: json['markets'] != null ? List<String>.from(json['markets']) : null,
-        category: json['category'],
-        subtype: json['subtype'],
-        detail: json['detail'],
-      );
-    } catch (e) {
-      print('Error parsing ProductFilters: $e');  
-      rethrow;
-    }
+    return ProductFilters(
+      terms: List<String>.from(json['terms'].map((x) => x as String)),
+      markets: json['markets'] != null ? List<String>.from(json['markets'].map((x) => x as String)) : null,
+      category: json['category'] as String,
+      subtype: json['subtype'] as String,
+      detail: json['detail'] as String,
+    );
   }
 
   Map<String, dynamic> toJson() {

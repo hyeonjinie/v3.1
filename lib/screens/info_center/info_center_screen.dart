@@ -13,6 +13,7 @@ import '../../services/subscription_service.dart';
 import '../../widgets/custom_bottom_navigation_bar/custom_bottom_navigation_bar.dart';
 import '../../widgets/font_size_helper/font_size_helper.dart';
 import '../../widgets/navigation_helper.dart';
+import 'dart:convert';
 
 class InfoCenterScreen extends StatefulWidget {
   const InfoCenterScreen({Key? key}) : super(key: key);
@@ -41,24 +42,9 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
     super.dispose();
   }
 
-  void _handleTabSelection() async {
-    if (_tabController.index == 3) {
-      final authProvider = Provider.of<AuthProviderService>(context, listen: false);
-      String? token = await authProvider.getCurrentUserToken();
-      if (token != null) {
-        try {
-          final result = await SubscriptionApiService.checkSubscriptionStatus(token);
-          print('Token: $token');
-          print('API Response Status Code: ${result.statusCode}');
-          print('API Response Body: ${result.body}');
-          print('API Response Headers: ${result.headers}');
-        } catch (e) {
-          print('Error checking subscription: $e');
-          print('Error Stack Trace: ${StackTrace.current}');
-        }
-      } else {
-        print('Token is null');
-      }
+  void _handleTabSelection() {
+    if (_tabController.index == 2) {
+      setState(() {}); // 탭이 변경될 때 FutureBuilder를 다시 실행하도록 상태 갱신
     }
   }
 
@@ -157,7 +143,7 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
                   tabs: const [
                     Tab(text: '품목정보'),
                     Tab(text: 'BPI'),
-                    Tab(text: 'B급'),
+                    // Tab(text: 'B급'),
                     Tab(text: '구독'),
                   ],
                 ),
@@ -172,9 +158,25 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
                         SingleChildScrollView(
                           child: BpiScreen(),
                         ),
-                        SubscriptedPage(),
-                        const SingleChildScrollView(
-                          child: SubscriptionPage(),
+                        // const SingleChildScrollView(
+                        //   child: SubscriptedPage()
+                        //   ),
+                        Builder(
+                          builder: (context) => FutureBuilder<bool>(
+                            future: _checkSubscriptionStatus(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+                              
+                              final bool isSubscribed = snapshot.data ?? false;
+                              return SingleChildScrollView(
+                                child: isSubscribed 
+                                  ? const SubscriptedPage()
+                                  : const SubscriptionPage(),
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -185,6 +187,23 @@ class InfoCenterScreenState extends State<InfoCenterScreen>
         ),
       ),
     );
+  }
+
+  Future<bool> _checkSubscriptionStatus() async {
+    final authProvider = Provider.of<AuthProviderService>(context, listen: false);
+    String? token = await authProvider.getCurrentUserToken();
+    if (token != null) {
+      try {
+        final result = await SubscriptionApiService.checkSubscriptionStatus(token);
+        if (result.statusCode == 200) {
+          final statusData = json.decode(result.body);
+          return statusData['sub_status'] ?? false;
+        }
+      } catch (e) {
+        print('Error checking subscription: $e');
+      }
+    }
+    return false;
   }
 
   Widget buildStockCard(Map<String, dynamic> stock) {

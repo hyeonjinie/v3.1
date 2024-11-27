@@ -1,8 +1,5 @@
 import 'dart:convert';
-
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:v3_mvp/screens/info_center/subscription/new_subscription/models/index.dart';
 import 'package:v3_mvp/screens/info_center/subscription/new_subscription/models/index_data.dart';
@@ -16,7 +13,6 @@ import '../widget/term_popup.dart';
 
 import 'package:v3_mvp/screens/info_center/subscription/new_subscription/models/subscription_category.dart';
 import 'package:v3_mvp/screens/info_center/subscription/new_subscription/models/subscription_data.dart';
-import 'package:v3_mvp/screens/info_center/subscription/new_subscription/models/subscription_state.dart';
 
 class SubscriptionPage extends StatefulWidget {
   const SubscriptionPage({Key? key}) : super(key: key);
@@ -354,7 +350,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
           if (item is IndexSelection) {
             // 현재 선택된 필터 조건에 맞는 인덱스 찾기
             final matchingIndex = indices.firstWhere(
-              (i) => i.name == item.index.name && 
+              (i) => i.name == item.index.name &&
                     i.filters.category == item.index.filters.category &&
                     i.filters.subtype == item.index.filters.subtype &&
                     i.filters.detail == item.index.filters.detail &&
@@ -412,19 +408,15 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       switch (level) {
         case 4:
           final options = category.getOptionsForLevel(null, null);
-          print('Level 4 Options: $options');
           return options;
         case 5:
           final options = category.getOptionsForLevel(selectedCategory, null);
-          print('Level 5 Options: $options');
           return options;
         case 6:
           final options = category.getOptionsForLevel(selectedCategory, selectedSubtype);
-          print('Level 6 Options: $options');
           return options;
         default:
           final options = category.getOptionsForLevel(selectedCategory, selectedSubtype);
-          print('Default Level Options: $options');
           return options;
       }
     } else if (selectedMode == '지수' && indexData != null) {
@@ -433,21 +425,16 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
 
       switch (level) {
         case 4:
-          print('Getting Level 4 options with selectedType: $selectedType'); // 디버깅용
           final options = category.getOptionsForLevel(null, selectedType);
-          print('Level 4 Options from category: $options'); // 디버깅용
           return options;
         case 5:
           final options = category.getOptionsForLevel(selectedIndexCategory, selectedType);
-          print('Level 5 Options: $options');
           return options;
         case 6:
           final options = category.getOptionsForLevel(selectedIndexCategory, selectedIndexDetail);
-          print('Level 6 Options: $options');
           return options;
         default:
           final options = category.getOptionsForLevel(selectedType, selectedIndexCategory);
-          print('Default Level Options: $options');
           return options;
       }
     }
@@ -923,6 +910,13 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                   TableCell(
                     child: Padding(
                       padding: EdgeInsets.all(12),
+                      child: Text('제공',
+                          style: TextStyle(fontWeight: FontWeight.w500)),
+                    ),
+                  ),
+                  TableCell(
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
                       child: SizedBox(width: 40),
                     ),
                   ),
@@ -971,6 +965,12 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                         ),
                       ),
                       TableCell(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(item.product.information ?? ''),
+                        ),
+                      ),
+                      TableCell(
                         child: IconButton(
                           onPressed: () {
                             setState(() {
@@ -1008,7 +1008,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                       TableCell(
                         child: Padding(
                           padding: const EdgeInsets.all(12),
-                          child: Text(item.term),
+                          child: Text(item.term.replaceAll(RegExp(r'[^0-9]'), '')), // 숫자만 표시
                         ),
                       ),
                       TableCell(
@@ -1023,6 +1023,12 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                           child: Text(
                             '${NumberFormat.currency(locale: "ko_KR", symbol: "").format(item.index.price[priceIndex])} 원',
                           ),
+                        ),
+                      ),
+                      TableCell(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(item.index.information ?? ''),
                         ),
                       ),
                       TableCell(
@@ -1269,6 +1275,15 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                                 ),
                               ),
                             ),
+                            Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Text(
+                                '제공',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                         ...subPriceList.map((item) => TableRow(
@@ -1294,6 +1309,10 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                               child: Text(
                                 '${NumberFormat.currency(locale: "ko_KR", symbol: "").format(int.tryParse(item['price']?.toString() ?? '0') ?? 0)} 원',
                               ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(item['information'] ?? ''),
                             ),
                           ],
                         )).toList(),
@@ -1321,6 +1340,10 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                                 '${NumberFormat.currency(locale: "ko_KR", symbol: "").format(int.tryParse(item['price']?.toString() ?? '0') ?? 0)} 원',
                               ),
                             ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(item['information'] ?? ''),
+                            ),
                           ],
                         )).toList(),
                       ],
@@ -1334,17 +1357,40 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                               horizontal: 80, vertical: 26),
                           backgroundColor: const Color(0xFF00AF66),
                         ),
-                        onPressed: () {
-                          _convertApiDataToSelectedItems();
-                          setState(() {
-                            isSummaryView = false;
-                          });
+                        onPressed: () async {
+                          final authProvider = Provider.of<AuthProviderService>(context, listen: false);
+                          final token = await authProvider.getCurrentUserToken();
+                          
+                          if (token != null) {
+                            final response = await SubscriptionApiService.checkSubscriptionStatus(token);
+                            if (response.statusCode == 200) {
+                              final data = json.decode(utf8.decode(response.bodyBytes));
+                              final bool subStatus = data['sub_status'] ?? false;
+                              final bool standby = data['standby'] ?? false;
+                              final bool isEdited = data['is_edited'] ?? false;
+                              
+                              if (!subStatus && standby) {
+                                // standby가 true이고 subStatus가 false인 경우에만 수정 화면으로 이동
+                                _convertApiDataToSelectedItems();
+                                setState(() {
+                                  isSummaryView = false;
+                                });
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('현재 구독 신청을 처리할 수 없습니다. 잠시 후 다시 시도해주세요.'),
+                                  ),
+                                );
+                              }
+                            }
+                          }
                         },
                         child: const Text(
                           '수정하기',
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
                             fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -1360,41 +1406,47 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   }
 
   Map<String, dynamic> _prepareSubscriptionData() {
+    
     final subPriceList = selectedItems
         .where((item) => item is ProductSelection)
         .map((item) => item as ProductSelection)
-        .map((item) => {
-              "category_a": item.term,
+        .map((item) {
+          final data = {
+              "category_a": item.term.replaceAll(RegExp(r'[^0-9]'), ''),
               "category_b": item.market,
-              "category_c": item.product.filters.category,
-              "category_d": item.product.filters.subtype,
+              "category_c": item.product.filters.subtype,
+              "category_d": item.product.filters.category,
               "category_e": item.product.filters.detail,
-              "category_f": item.product.name,  // variety와 동일한 값 사용
+              "category_f": item.product.name,
               "variety": item.product.name,
-              "price": item.product.price[item.selectedPrice].toString(),  // 문자열로 변환
-            })
+              "price": item.product.price[item.selectedPrice].toString(),
+              "information": item.product.information,
+          };
+          return data;
+        })
         .toList();
 
     final subIndexList = selectedItems
         .where((item) => item is IndexSelection)
         .map((item) => item as IndexSelection)
         .map((item) {
-          // 선택된 기간에 해당하는 가격 인덱스 찾기
           final termIndex = item.index.filters.terms.indexOf(item.term);
           final price = termIndex != -1 && termIndex < item.index.price.length
               ? item.index.price[termIndex]
               : item.index.price[0];
               
-          return {
-            "category_a": item.term,
+          final data = {
+            "category_a": item.term.replaceAll(RegExp(r'[^0-9]'), ''),  // D+ 형식에서 숫자만 추출
             "category_b": item.type,
             "category_c": item.index.filters.category,
             "category_d": item.index.filters.detail,
-            "category_e": item.index.filters.subDetail,  // 레벨 6 데이터 추가
+            "category_e": item.index.filters.subDetail,
             "category_f": item.index.name,
             "variety": item.index.name,
-            "price": price.toString(),  // 문자열로 변환
+            "price": price.toString(),
+            "information": item.index.information,
           };
+          return data;
         })
         .toList();
 
@@ -1403,6 +1455,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       "sub_index_list": subIndexList,
     };
 
+
     return data;
   }
 
@@ -1410,56 +1463,57 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     if (subscriptionData == null) return;
 
     selectedItems.clear();
-    final subPriceList = (subscriptionData!['sub_price_list'] as List?) ?? [];
-    final subIndexList = (subscriptionData!['sub_index_list'] as List?) ?? [];
+
+    final subPriceList = subscriptionData?['sub_price_list'] as List<dynamic>? ?? [];
+    final subIndexList = subscriptionData?['sub_index_list'] as List<dynamic>? ?? [];
 
     isEditMode = true;
 
-    for (var item in subPriceList) {
-      final priceStr = item['price']?.toString() ?? '0';
-      final price = int.tryParse(priceStr) ?? 0;
-      
+    for (final item in subPriceList) {
       final product = Product(
-        name: item['variety'] ?? '',
-        price: [price],
+        name: (item['variety'] ?? '') as String,
+        price: [int.parse((item['price'] ?? '0').toString())],
         filters: ProductFilters(
-          terms: [item['category_a'] ?? ''],
-          markets: [item['category_b'] ?? ''],
-          category: item['category_c'] ?? '',
-          subtype: item['category_d'] ?? '',
-          detail: item['category_e'] ?? '',
+          terms: [(item['category_a'] ?? '') as String],
+          markets: [(item['category_b'] ?? '') as String],
+          category: (item['category_d'] ?? '') as String,
+          subtype: (item['category_c'] ?? '') as String,
+          detail: (item['category_e'] ?? '') as String,
         ),
+        information: item['information'].toString(),
       );
 
-      selectedItems.add(ProductSelection(
-        product: product,
-        term: item['category_a'] ?? '',
-        market: item['category_b'] ?? '',
-        selectedPrice: 0,
-      ));
+      selectedItems.add(
+        ProductSelection(
+          product: product,
+          term: '${item['category_a']}',  // 숫자에 '일' 추가
+          market: (item['category_b'] ?? '') as String,
+          selectedPrice: 0,
+        ),
+      );
     }
 
-    for (var item in subIndexList) {
-      final priceStr = item['price']?.toString() ?? '0';
-      final price = int.tryParse(priceStr) ?? 0;
-      
+    for (final item in subIndexList) {
       final index = Index(
-        name: item['variety'] ?? '',
-        price: [price],
+        name: (item['variety'] ?? '') as String,
+        price: [int.parse((item['price'] ?? '0').toString())],
         filters: IndexFilters(
-          terms: [item['category_a'] ?? ''],
-          category: item['category_c'] ?? '',
-          subtype: item['category_b'] ?? '',
-          detail: item['category_d'] ?? '',
-          subDetail: item['category_e'] ?? '',
+          terms: ['${item['category_a']}'],  // 숫자에 '일' 추가
+          category: (item['category_c'] ?? '') as String,
+          detail: (item['category_d'] ?? '') as String,
+          subDetail: (item['category_e'] ?? '') as String,
+          subtype: (item['category_b'] ?? '') as String,
         ),
+        information: item['information']?.toString(),
       );
 
-      selectedItems.add(IndexSelection(
-        index: index,
-        term: item['category_a'] ?? '',
-        type: item['category_b'] ?? '',
-      ));
+      selectedItems.add(
+        IndexSelection(
+          index: index,
+          term: '${item['category_a']}',  // 숫자에 '일' 추가
+          type: (item['category_b'] ?? '') as String,
+        ),
+      );
     }
   }
 

@@ -47,13 +47,15 @@ class SubscriptionApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final responseData = jsonDecode(response.body);
+        return responseData;
       } else {
         final responseBody = utf8.decode(response.bodyBytes);
-        throw Exception('API request failed with status ${response.statusCode}: $responseBody');
+        throw Exception('Failed to create subscription: ${response.statusCode}\n$responseBody');
       }
     } catch (e) {
-      throw Exception('API request failed: $e');
+      print('Error: $e');
+      rethrow;
     }
   }
 

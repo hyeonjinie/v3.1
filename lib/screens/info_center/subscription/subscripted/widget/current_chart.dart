@@ -1,49 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
-// _ChartData 클래스 정의 추가
-class _ChartData {
-  final String x;
-  final double y;
-
-  _ChartData(this.x, this.y);
-}
-
-class CurrentChart extends StatefulWidget {
-  final Map<String, List<double>> currentProductionData;
+class CurrentChart extends StatelessWidget {
+  final Map<String, dynamic> currentProductionData;
+  final Map<String, dynamic> commProductionData;
   final Map<String, Color> gradeColorMap;
-  final List<String> selectedGrades;
-  final List<String> selectedYears;
-  final ValueChanged<bool> onToggleView;
-  final String unit;
-  final String hoverText;
 
   const CurrentChart({
-    Key? key, 
+    Key? key,
     required this.currentProductionData,
+    required this.commProductionData,
     required this.gradeColorMap,
-    required this.selectedGrades,
-    required this.selectedYears,
-    required this.onToggleView,
-    required this.unit,
-    required this.hoverText,
   }) : super(key: key);
 
   @override
-  State<CurrentChart> createState() => _CurrentChartState();
-}
-
-class _CurrentChartState extends State<CurrentChart> {
-  @override
   Widget build(BuildContext context) {
-    return _buildChart();
-  }
+    final screenWidth = MediaQuery.of(context).size.width;
 
-  Widget _buildChart() {
-    final TooltipBehavior tooltipBehavior = TooltipBehavior(
-      enable: true,
-      format: widget.hoverText,
-    );
+    // 첫 번째 등급의 date를 x축 값으로 설정
+    final List<String> xAxisLabels = commProductionData.values.first['price'].isEmpty
+        ? List<String>.from(currentProductionData.values.first['date'])
+        : List<String>.from(commProductionData.values.first['date']);
 
     final TrackballBehavior trackballBehavior = TrackballBehavior(
       enable: true,
@@ -57,84 +34,116 @@ class _CurrentChartState extends State<CurrentChart> {
       ),
     );
 
-    // xLabels 생성: 선택된 연도와 평년을 포함한 통합 타임라인 생성
-    List<String> xLabels = [];
-    List<String> years =
-        List.from(widget.selectedYears.where((year) => year != '평년'))..sort();
+    return Container(
+      width: screenWidth,
+      height: 350, 
+      child: Stack(
+        children: [
+          SfCartesianChart(
+            primaryXAxis: const CategoryAxis(
+              majorGridLines: MajorGridLines(width: 0),
+              labelRotation: -20, 
+              labelStyle: TextStyle(
+                color: Color(0xFF666C77),
+                fontSize: 12,
+              ),
+            ),
+            primaryYAxis: const NumericAxis(
+              majorGridLines: MajorGridLines(
+                width: 0.5,
+                color: Color(0xFFEEEEEE),
+              ),
+              labelStyle: TextStyle(
+                color: Color(0xFF666C77),
+                fontSize: 12,
+              ),
+            ),
+            tooltipBehavior: TooltipBehavior(enable: true),
+            trackballBehavior: trackballBehavior,
+            series: [
+              // Current production data series
+              ...currentProductionData.entries.map((entry) {
+                final grade = entry.key;
+                final data = entry.value;
+                final List<double> prices = List<double>.from(data['price']);
 
-    for (var year in years) {
-      for (int month = 1; month <= 12; month++) {
-        xLabels.add(
-            '${year.substring(2)}.${month.toString().padLeft(2, '0')}'); // 'YY.MM'
-      }
-    }
+                final chartData = List.generate(
+                  prices.length,
+                  (index) => _ChartData(xAxisLabels[index], prices[index]),
+                );
 
-    // x축 레이블에 중복 제거
-    xLabels = xLabels.toSet().toList();
+                return LineSeries<_ChartData, String>(
+                  name: grade,
+                  dataSource: chartData,
+                  xValueMapper: (_ChartData data, _) => data.x,
+                  yValueMapper: (_ChartData data, _) => data.y,
+                  color: gradeColorMap[grade],
+                  animationDuration: 0,
+                  markerSettings: const MarkerSettings(
+                    isVisible: true,
+                    width: 1,
+                    height: 1,
+                  ),
+                );
+              }).toList(),
 
-    return SfCartesianChart(
-      primaryXAxis: const CategoryAxis(
-        majorGridLines: MajorGridLines(width: 0),
-        labelRotation: 0,
-        interval: 1,
-        labelStyle: TextStyle(
-          color: Color(0xFF666C77),
-          fontSize: 12,
-        ),
-      ),
-      primaryYAxis: const NumericAxis(
-        majorGridLines: MajorGridLines(
-          width: 0.5,
-          color: Color(0xFFEEEEEE),
-        ),
-        labelStyle: TextStyle(
-          color: Color(0xFF666C77),
-          fontSize: 12,
-        ),
-      ),
-      tooltipBehavior: tooltipBehavior,
-      trackballBehavior: trackballBehavior,
-      series: [
-        // 선택된 등급 데이터 추가
-        ...widget.selectedGrades.map((grade) {
-          List<double> filteredData = widget.currentProductionData[grade] ?? [];
-          return LineSeries<_ChartData, String>(
-            name: grade,
-            dataSource: List.generate(
-              filteredData.length,
-              (index) => _ChartData(xLabels[index], filteredData[index]),
-            ),
-            xValueMapper: (_ChartData data, _) => data.x,
-            yValueMapper: (_ChartData data, _) => data.y,
-            color: widget.gradeColorMap[grade],
-            animationDuration: 0,
-            markerSettings: const MarkerSettings(
-              isVisible: true,
-              width: 4, // TrendChart와 동일한 크기
-              height: 4, // TrendChart와 동일한 크기
-            ),
-          );
-        }),
-        // 평년 데이터 추가
-        if (widget.currentProductionData.containsKey('평년'))
-          LineSeries<_ChartData, String>(
-            name: '평년',
-            dataSource: List.generate(
-              widget.currentProductionData['평년']!.length,
-              (index) => _ChartData(
-                  xLabels[index], widget.currentProductionData['평년']![index]),
-            ),
-            xValueMapper: (_ChartData data, _) => data.x,
-            yValueMapper: (_ChartData data, _) => data.y,
-            color: const Color(0xFFB8D9AA), // 평년 데이터 색상
-            animationDuration: 0,
-            markerSettings: const MarkerSettings(
-              isVisible: true,
-              width: 4, // TrendChart와 동일한 크기
-              height: 4, // TrendChart와 동일한 크기
-            ),
+              if (commProductionData.isNotEmpty)
+                ...commProductionData.entries.map((entry) {
+                  final grade = entry.key;
+                  final data = entry.value;
+                  final List<double> prices = List<double>.from(data['price']);
+
+                  final chartData = List.generate(
+                    prices.length,
+                    (index) => _ChartData(xAxisLabels[index], prices[index]),
+                  );
+
+                  return LineSeries<_ChartData, String>(
+                    name: grade,
+                    dataSource: chartData,
+                    xValueMapper: (_ChartData data, _) => data.x,
+                    yValueMapper: (_ChartData data, _) => data.y,
+                    color: gradeColorMap[grade],
+                    animationDuration: 0,
+                    markerSettings: const MarkerSettings(
+                      isVisible: true,
+                      width: 1,
+                      height: 1,
+                    ),
+                    dashArray: <double>[1, 5], // 점선 스타일로 설정
+                  );
+                }).toList(),
+            ],
           ),
-      ],
+          
+          // '실선: 동향, 점선: 평년' 텍스트 표시
+          if (commProductionData.values.first['price'].isNotEmpty)
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                color: Colors.white.withOpacity(0.8),
+                child: const Text(
+                  '실선: 동향 \n점선: 평년',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF666C77),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
+}
+
+// x축과 y축 데이터를 저장하는 클래스
+class _ChartData {
+  final String x;
+  final double y;
+
+  _ChartData(this.x, this.y);
 }
